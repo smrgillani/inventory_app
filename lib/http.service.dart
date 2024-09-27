@@ -28,11 +28,11 @@ Future<Map<String, dynamic>> getToken() async {
 
   try {
     final tokenUrl = Uri.parse(
-        'http://192.168.0.14/connector/api/business-register'); // Replace with the token endpoint URL
+        'http://10.72.29.212/connector/api/business-register'); // Replace with the token endpoint URL
     final response = await http.get(
       tokenUrl,
       headers: {
-        'Host': '10.71.23.166',
+        'Host': '10.72.29.212',
       },
     );
 
@@ -64,7 +64,7 @@ Future<Map<String, dynamic>> getToken() async {
 }
 
 Future<Map<String, dynamic>> sendFormData(Map<String, dynamic> formData, String cookie) async {
-  const String url = 'http://192.168.0.14/connector/api/business-register';
+  const String url = 'http://10.72.29.212/connector/api/business-register';
   // final String filePath = '/path/to/your/file.png';
 
   final headers = {

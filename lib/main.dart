@@ -106,9 +106,7 @@ class LoginScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              Image.asset('assets/images/logo-cv.png',
-                width: 350.0, // Replace with your desired width
-                height: 350.0, ),
+              Image.asset('assets/images/logo-cv.png', width: 350.0, height: 350.0),
               const SizedBox(height: 16.0),
               AllComponents().buildTextFormField(labelText: 'Username', controller: usernameController, validator: (value) {
                 if (value == null || value.isEmpty) {

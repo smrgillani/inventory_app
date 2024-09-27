@@ -1,21 +1,37 @@
 import 'package:dropdown_search/dropdown_search.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:gs_erp/models/Brand.dart';
+import 'package:gs_erp/models/BusinessLocation.dart';
+import 'package:gs_erp/models/Product.dart';
 import 'package:gs_erp/services/http.service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
 import 'common/button_widget.dart';
 import 'main.dart';
+import 'models/Category.dart';
 import 'models/Currency.dart';
+import 'models/Tax.dart';
 import 'models/Unit.dart';
 
 class PhotoItem {
   final String image;
   final String name;
   PhotoItem(this.image, this.name);
+}
+
+class BarcodeType {
+  final String name;
+  final String value;
+  BarcodeType(this.name, this.value);
+
+  @override
+  String toString() {
+    return name;
+  }
 }
 
 class AddProduct extends StatefulWidget {
@@ -33,10 +49,23 @@ class AddProductState extends State<AddProduct> {
   Currency? selectedCurrency;
   final QuillController _controller = QuillController.basic();
   FinancialYearMonth? selectedMonth;
-  File? image;
+  File? productImage;
+  File? productBrochureImage;
   List<XFile> images = <XFile>[];
   late List<Unit> units = [];
   late List<Brand> brands = [];
+  final List<BarcodeType> barcodeTypes = [BarcodeType("name 1", "value 1"),BarcodeType("name 2", "value 2")];
+  late List<ProductCategory> categories = [];
+  late List<ProductCategory> subCategories = [];
+  late List<BusinessLocation> businessLocations = [];
+  late List<Tax> taxes = [];
+  late int categoryId;
+  late int subCategoryId;
+  final List<String> sellingPriceTaxType = ["Inclusive", "Exclusive"];
+  final List<String> productType = ["Single", "Variable", "Combo"];
+  late String selectedSellingPriceTaxType = "Inclusive";
+  late String selectedProductType = "Single";
+  late List<Product> searchProducts = [];
 
   @override
   void initState() {
@@ -48,6 +77,9 @@ class AddProductState extends State<AddProduct> {
     selectedMonth = FinancialYearMonth.values[0];
     getUnits();
     getBrands();
+    getCategories();
+    getBusinessLocations();
+    getTaxes();
   }
 
   getUnits() async{
@@ -66,13 +98,68 @@ class AddProductState extends State<AddProduct> {
     }
   }
 
-  Future<void> _pickImage() async {
+  getCategories() async{
+    dynamic response = await RestSerice().getData("/taxonomy");
+    List<dynamic> categoryList = (response['data'] as List).cast<dynamic>();
+    for (dynamic category in categoryList) {
+      categories.add(ProductCategory(name: category['name'], id: category['id']));
+    }
+  }
+
+  getSubCategories(int categoryId) async{
+    dynamic response = await RestSerice().getData("/taxonomy/$categoryId");
+    List<dynamic> subCategoryList = (response['data'][0]['sub_categories'] as List).cast<dynamic>();
+    for (dynamic subCategory in subCategoryList) {
+      subCategories.add(ProductCategory(name: subCategory['name'], id: subCategory['id']));
+    }
+  }
+
+  getBusinessLocations() async{
+    dynamic response = await RestSerice().getData("/business-location");
+    List<dynamic> businessLocationList = (response['data'] as List).cast<dynamic>();
+    for (dynamic businessLocation in businessLocationList) {
+      businessLocations.add(BusinessLocation(id: businessLocation['id'], name: businessLocation['name']));
+    }
+  }
+
+  getTaxes() async{
+    dynamic response = await RestSerice().getData("/tax");
+    List<dynamic> taxList = (response['data'] as List).cast<dynamic>();
+    for (dynamic tax in taxList) {
+      taxes.add(Tax(id: tax['id'], name: tax['name']));
+    }
+  }
+
+  getSearchedProducts(String searchTerm) async {
+    if(searchTerm.length > 1) {
+      dynamic response = await RestSerice().getData(
+          "/get-products?check_enable_stock=false&term=$searchTerm");
+      List<dynamic> productList = (response['data'] as List).cast<dynamic>();
+      for (dynamic product in productList) {
+        searchProducts.add(Product(
+            productId: product['product_id'], productName: product['text']));
+      }
+    }
+  }
+
+  Future<void> pickProductImage() async {
     final imagePicker = ImagePicker();
     final pickedFile = await imagePicker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
       setState(() {
-        image = File(pickedFile.path);
+        productImage = File(pickedFile.path);
+      });
+    }
+  }
+
+  Future<void> pickBrochureImage() async {
+    final imagePicker = ImagePicker();
+    final pickedFile = await imagePicker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      setState(() {
+        productBrochureImage = File(pickedFile.path);
       });
     }
   }
@@ -89,9 +176,15 @@ class AddProductState extends State<AddProduct> {
     }
   }
 
-  void _removeImage() {
+  void removeProductImage() {
     setState(() {
-      image = null;
+      productImage = null;
+    });
+  }
+
+  void removeBrochureImage() {
+    setState(() {
+      productBrochureImage = null;
     });
   }
 
@@ -118,7 +211,8 @@ class AddProductState extends State<AddProduct> {
               appBar: AppBar(
                 title: const Text('Add New Product'),
               ),
-              body: SingleChildScrollView(child: Padding(
+              body: SingleChildScrollView(
+                  child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
                       children: <Widget>[
@@ -129,7 +223,7 @@ class AddProductState extends State<AddProduct> {
                                     labelText: 'Product Name:*',
                                     validator: (value) {
                                       if (value == null || value.isEmpty) {
-                                        return 'Please specify your business name.';
+                                        return 'Please specify your product name.';
                                       }
                                       return null;
                                     },
@@ -145,11 +239,11 @@ class AddProductState extends State<AddProduct> {
                         allComponents.buildResponsiveWidget(
                             Column(
                                 children: [
-                                  DropdownSearch<Currency>(
+                                  DropdownSearch<BarcodeType>(
                                     popupProps: const PopupProps.menu(
                                         showSearchBox: true
                                     ),
-                                    items: newCurrencyLabels,
+                                    items: barcodeTypes,
                                     dropdownDecoratorProps: const DropDownDecoratorProps(
                                       dropdownSearchDecoration: InputDecoration(
                                         hintText: 'Please select a barcode type',
@@ -213,11 +307,11 @@ class AddProductState extends State<AddProduct> {
                                       print(e?.id);
                                     },
                                   ),
-                                  DropdownSearch<Currency>(
+                                  DropdownSearch<ProductCategory>(
                                     popupProps: const PopupProps.menu(
                                         showSearchBox: true
                                     ),
-                                    items: newCurrencyLabels,
+                                    items: categories,
                                     dropdownDecoratorProps: const DropDownDecoratorProps(
                                       dropdownSearchDecoration: InputDecoration(
                                         hintText: 'Please select a category for product',
@@ -230,7 +324,10 @@ class AddProductState extends State<AddProduct> {
                                       ),
                                     ),
                                     onChanged: (e) {
-                                      print(e?.value);
+                                      setState(() {
+                                        categoryId = e!.id;
+                                        getSubCategories(e!.id);
+                                      });
                                     },
                                   )
                                 ]
@@ -241,11 +338,11 @@ class AddProductState extends State<AddProduct> {
                         allComponents.buildResponsiveWidget(
                             Column(
                                 children: [
-                                  DropdownSearch<Currency>(
+                                  DropdownSearch<ProductCategory>(
                                     popupProps: const PopupProps.menu(
                                         showSearchBox: true
                                     ),
-                                    items: newCurrencyLabels,
+                                    items: subCategories,
                                     dropdownDecoratorProps: const DropDownDecoratorProps(
                                       dropdownSearchDecoration: InputDecoration(
                                         hintText: 'Please select a sub category for product',
@@ -258,14 +355,15 @@ class AddProductState extends State<AddProduct> {
                                       ),
                                     ),
                                     onChanged: (e) {
-                                      print(e?.value);
+                                      print(e?.id);
                                     },
                                   ),
-                                  DropdownSearch<Currency>.multiSelection(
-                                    // popupProps: const PopupProps.menu(
+                                  DropdownSearch<
+                                      BusinessLocation>.multiSelection(
+                                    // popupProps: PopupProps.menu(
                                     //     showSearchBox: true
                                     // ),
-                                    items: newCurrencyLabels,
+                                    items: businessLocations,
                                     dropdownDecoratorProps: const DropDownDecoratorProps(
                                       dropdownSearchDecoration: InputDecoration(
                                         hintText: 'Please select a business location',
@@ -367,10 +465,10 @@ class AddProductState extends State<AddProduct> {
                                             icon: Icons.attach_file,
                                             color: Colors.white,
                                             onClicked: () {
-                                              _pickImage();
+                                              pickProductImage();
                                             }
                                         ),
-                                        if (image != null)
+                                        if (productImage != null)
                                           Stack(
                                               children: [
                                                 Container(
@@ -394,8 +492,10 @@ class AddProductState extends State<AddProduct> {
                                                     child: Padding(
                                                       padding: const EdgeInsets
                                                           .all(16),
-                                                      child: image != null
-                                                          ? Image.file(image!,
+                                                      child: productImage !=
+                                                          null
+                                                          ? Image.file(
+                                                          productImage!,
                                                           fit: BoxFit.cover)
                                                           : const Text(''),
                                                     )
@@ -404,7 +504,7 @@ class AddProductState extends State<AddProduct> {
                                                   top: 26,
                                                   right: 10,
                                                   child: InkWell(
-                                                    onTap: _removeImage,
+                                                    onTap: removeProductImage,
                                                     child: const Column(
                                                         children: <Widget>[
                                                           Icon(Icons.cancel,
@@ -418,7 +518,7 @@ class AddProductState extends State<AddProduct> {
                                                   top: 76,
                                                   right: 10,
                                                   child: InkWell(
-                                                    onTap: _pickImage,
+                                                    onTap: pickProductImage,
                                                     child: const Column(
                                                         children: <Widget>[
                                                           Icon(Icons
@@ -441,10 +541,10 @@ class AddProductState extends State<AddProduct> {
                                             icon: Icons.attach_file,
                                             color: Colors.white,
                                             onClicked: () {
-                                              _pickImage();
+                                              pickBrochureImage();
                                             }
                                         ),
-                                        if (image != null)
+                                        if (productBrochureImage != null)
                                           Stack(
                                               children: [
                                                 Container(
@@ -468,8 +568,10 @@ class AddProductState extends State<AddProduct> {
                                                     child: Padding(
                                                       padding: const EdgeInsets
                                                           .all(16),
-                                                      child: image != null
-                                                          ? Image.file(image!,
+                                                      child: productBrochureImage !=
+                                                          null
+                                                          ? Image.file(
+                                                          productBrochureImage!,
                                                           fit: BoxFit.cover)
                                                           : const Text(''),
                                                     )
@@ -478,7 +580,7 @@ class AddProductState extends State<AddProduct> {
                                                   top: 26,
                                                   right: 10,
                                                   child: InkWell(
-                                                    onTap: _removeImage,
+                                                    onTap: removeBrochureImage,
                                                     child: const Column(
                                                         children: <Widget>[
                                                           Icon(Icons.cancel,
@@ -492,7 +594,7 @@ class AddProductState extends State<AddProduct> {
                                                   top: 76,
                                                   right: 10,
                                                   child: InkWell(
-                                                    onTap: _pickImage,
+                                                    onTap: pickBrochureImage,
                                                     child: const Column(
                                                         children: <Widget>[
                                                           Icon(Icons
@@ -544,12 +646,6 @@ class AddProductState extends State<AddProduct> {
                                 children: [
                                   allComponents.buildTextFormField(
                                     labelText: 'Weight:',
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return 'Please specify your business name.';
-                                      }
-                                      return null;
-                                    },
                                   ),
                                   allComponents.buildTextFormField(
                                     labelText: 'Service staff timer/Preparation time (In minutes):',
@@ -562,11 +658,11 @@ class AddProductState extends State<AddProduct> {
                         allComponents.buildResponsiveWidget(
                             Column(
                                 children: [
-                                  DropdownSearch<Currency>(
+                                  DropdownSearch<Tax>(
                                     popupProps: const PopupProps.menu(
                                         showSearchBox: true
                                     ),
-                                    items: newCurrencyLabels,
+                                    items: taxes,
                                     dropdownDecoratorProps: const DropDownDecoratorProps(
                                       dropdownSearchDecoration: InputDecoration(
                                         hintText: 'Please select an applicable tax',
@@ -579,11 +675,12 @@ class AddProductState extends State<AddProduct> {
                                       ),
                                     ),
                                     onChanged: (e) {
-                                      print(e?.value);
+                                      print(e?.id);
                                     },
                                   ),
-                                  DropdownButtonFormField<FinancialYearMonth>(
-                                      value: selectedMonth,
+                                  DropdownButtonFormField<String>(
+                                      value: selectedSellingPriceTaxType
+                                          .toLowerCase(),
                                       decoration: const InputDecoration(
                                         labelText: 'Selling Price Tax Type:*',
                                         border: OutlineInputBorder(
@@ -593,23 +690,23 @@ class AddProductState extends State<AddProduct> {
                                                     4.0))
                                         ),
                                       ),
-                                      items: FinancialYearMonth.values.map((
-                                          financialyearmonth) {
+                                      items: sellingPriceTaxType.map((taxType) {
                                         return DropdownMenuItem<
-                                            FinancialYearMonth>(
-                                          value: financialyearmonth,
-                                          child: Text(financialyearmonth.label),
+                                            String>(
+                                          value: taxType.toLowerCase(),
+                                          child: Text(taxType),
                                         );
                                       }).toList(),
-                                      onChanged: (FinancialYearMonth? value) {
-                                        setState(() {
-                                          // widget.updateFormData(
-                                          //     'fy_start_month', value?.value);
-                                        });
+                                      onChanged: (String? value) {
+                                        // setState(() {
+                                        //
+                                        //   // widget.updateFormData(
+                                        //   //     'fy_start_month', value?.value);
+                                        // });
                                       }
                                   ),
-                                  DropdownButtonFormField<FinancialYearMonth>(
-                                      value: selectedMonth,
+                                  DropdownButtonFormField<String>(
+                                      value: selectedProductType.toLowerCase(),
                                       decoration: const InputDecoration(
                                         labelText: 'Product Type:*',
                                         border: OutlineInputBorder(
@@ -619,18 +716,16 @@ class AddProductState extends State<AddProduct> {
                                                     4.0))
                                         ),
                                       ),
-                                      items: FinancialYearMonth.values.map((
-                                          financialyearmonth) {
-                                        return DropdownMenuItem<
-                                            FinancialYearMonth>(
-                                          value: financialyearmonth,
-                                          child: Text(financialyearmonth.label),
+                                      items: productType.map((prodType) {
+                                        return DropdownMenuItem<String>(
+                                          value: prodType.toLowerCase(),
+                                          child: Text(prodType),
                                         );
                                       }).toList(),
-                                      onChanged: (FinancialYearMonth? value) {
+                                      onChanged: (String? value) {
                                         setState(() {
-                                          // widget.updateFormData(
-                                          //     'fy_start_month', value?.value);
+                                          selectedProductType =
+                                              value.toString();
                                         });
                                       }
                                   ),
@@ -639,270 +734,336 @@ class AddProductState extends State<AddProduct> {
                             context
                         ),
                         const SizedBox(height: 16.0),
-                        Column(
-                          children: [
-                            Container(
-                              width: MediaQuery
-                                  .of(context)
-                                  .size
-                                  .width,
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                    color: const Color(0xffa1a0a1)),
-                                borderRadius: BorderRadius.circular(5),
-                              ),
-                              child: Column(
-                                children: [
-                                  Container(
-                                    width: MediaQuery
-                                        .of(context)
-                                        .size
-                                        .width,
-                                    decoration: const BoxDecoration(
-                                      color: Colors.green,
-                                    ),
-                                    child: const Padding(
-                                      padding: EdgeInsets.only(left: 12,
-                                          top: 5,
-                                          right: 5,
-                                          bottom: 5),
-                                      child: Text('Default Purchase Price',
-                                        style: TextStyle(
-                                            color: Color(0xffffffff),
-                                            fontSize: 20),),
-                                    ),
-                                  ),
-                                  Padding(padding: const EdgeInsets.all(16),
-                                      child: allComponents
-                                          .buildResponsiveWidget(
-                                          Column(
-                                              children: [
-                                                allComponents
-                                                    .buildTextFormField(
-                                                  labelText: 'Exc. tax:*',
-                                                  validator: (value) {
-                                                    if (value == null ||
-                                                        value.isEmpty) {
-                                                      return 'Please specify your business name.';
-                                                    }
-                                                    return null;
-                                                  },
-                                                ),
-                                                allComponents
-                                                    .buildTextFormField(
-                                                  labelText: 'Inc. tax:*',
-                                                )
-                                              ]), context)
-                                  )
-                                ],
-                              ),
-                            )
-                          ],
-                        ),
-                        const SizedBox(height: 16.0),
-                        allComponents
-                            .buildResponsiveWidget(
-                            Column(
+                        if(selectedProductType.toLowerCase() == 'single')
+                          Column(
                               children: [
-                                Container(
-                                  width: MediaQuery
-                                      .of(context)
-                                      .size
-                                      .width,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                        color: const Color(0xffa1a0a1)),
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Container(
-                                        width: MediaQuery
-                                            .of(context)
-                                            .size
-                                            .width,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.green,
-                                        ),
-                                        child: const Padding(
-                                          padding: EdgeInsets.only(left: 12,
-                                              top: 5,
-                                              right: 5,
-                                              bottom: 5),
-                                          child: Text('x Margin(%)',
-                                            style: TextStyle(
-                                                color: Color(0xffffffff),
-                                                fontSize: 20),),
-                                        ),
+                                Column(
+                                  children: [
+                                    Container(
+                                      width: MediaQuery
+                                          .of(context)
+                                          .size
+                                          .width,
+                                      decoration: BoxDecoration(
+                                        border: Border.all(
+                                            color: const Color(0xffa1a0a1)),
+                                        borderRadius: BorderRadius.circular(5),
                                       ),
-                                      Padding(padding: const EdgeInsets.all(16),
-                                          child: allComponents
-                                              .buildTextFormField(
-                                            labelText: '',
-                                          )
-                                      )
-                                    ],
-                                  ),
-                                ),
-                                Container(
-                                  width: MediaQuery
-                                      .of(context)
-                                      .size
-                                      .width,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                        color: const Color(0xffa1a0a1)),
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Container(
-                                        width: MediaQuery
-                                            .of(context)
-                                            .size
-                                            .width,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.green,
-                                        ),
-                                        child: const Padding(
-                                          padding: EdgeInsets.only(left: 12,
-                                              top: 5,
-                                              right: 5,
-                                              bottom: 5),
-                                          child: Text('Default Selling Price',
-                                            style: TextStyle(
-                                                color: Color(0xffffffff),
-                                                fontSize: 20),),
-                                        ),
-                                      ),
-                                      Padding(padding: const EdgeInsets.all(16),
-                                          child: allComponents
-                                              .buildTextFormField(
-                                            labelText: 'Exc. Tax',
-                                          )
-                                      )
-                                    ],
-                                  ),
-                                )
-                              ],
-                            ), context),
-                        const SizedBox(height: 16.0),
-                        allComponents
-                            .buildResponsiveWidget(
-                            Column(
-                              children: [
-                                Container(
-                                  width: MediaQuery
-                                      .of(context)
-                                      .size
-                                      .width,
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                        color: const Color(0xffa1a0a1)),
-                                    borderRadius: BorderRadius.circular(5),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      Container(
-                                        width: MediaQuery
-                                            .of(context)
-                                            .size
-                                            .width,
-                                        decoration: const BoxDecoration(
-                                          color: Colors.green,
-                                        ),
-                                        child: const Padding(
-                                          padding: EdgeInsets.only(left: 12,
-                                              top: 5,
-                                              right: 5,
-                                              bottom: 5),
-                                          child: Text('Product image',
-                                            style: TextStyle(
-                                                color: Color(0xffffffff),
-                                                fontSize: 20),),
-                                        ),
-                                      ),
-                                      if(images.isNotEmpty)
-                                        SingleChildScrollView(
-                                          padding: const EdgeInsets.only(
-                                              top: 11),
-                                          child: Column(
-                                            children: <Widget>[
-                                              // Other widgets...
-                                              GridView.builder(
-                                                shrinkWrap: true,
-                                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                                  crossAxisSpacing: 0,
-                                                  mainAxisSpacing: 0,
-                                                  crossAxisCount: 3,
-                                                ),
-                                                itemCount: images.length,
-                                                itemBuilder: (context, index) {
-                                                  return GestureDetector(
-                                                    onTap: () {
-
-                                                    },
-                                                    child: Container(
-                                                      margin: const EdgeInsets.all(5),
-                                                      decoration: BoxDecoration(
-                                                        image: DecorationImage(
-                                                          fit: BoxFit.cover,
-                                                          image: FileImage(File(images[index].path)),
+                                      child: Column(
+                                        children: [
+                                          Container(
+                                            width: MediaQuery
+                                                .of(context)
+                                                .size
+                                                .width,
+                                            decoration: const BoxDecoration(
+                                              color: Colors.green,
+                                            ),
+                                            child: const Padding(
+                                              padding: EdgeInsets.only(left: 12,
+                                                  top: 5,
+                                                  right: 5,
+                                                  bottom: 5),
+                                              child: Text(
+                                                'Default Purchase Price',
+                                                style: TextStyle(
+                                                    color: Color(0xffffffff),
+                                                    fontSize: 20),),
+                                            ),
+                                          ),
+                                          Padding(
+                                              padding: const EdgeInsets.all(16),
+                                              child: allComponents
+                                                  .buildResponsiveWidget(
+                                                  Column(
+                                                      children: [
+                                                        allComponents
+                                                            .buildTextFormField(
+                                                          labelText: 'Exc. tax:*',
                                                         ),
-                                                      ),
-                                                    ),
-                                                  );
-                                                },
+                                                        allComponents
+                                                            .buildTextFormField(
+                                                          labelText: 'Inc. tax:*',
+                                                        )
+                                                      ]), context)
+                                          )
+                                        ],
+                                      ),
+                                    )
+                                  ],
+                                ),
+                                const SizedBox(height: 16.0),
+                                allComponents
+                                    .buildResponsiveWidget(
+                                    Column(
+                                      children: [
+                                        Container(
+                                          width: MediaQuery
+                                              .of(context)
+                                              .size
+                                              .width,
+                                          decoration: BoxDecoration(
+                                            border: Border.all(
+                                                color: const Color(0xffa1a0a1)),
+                                            borderRadius: BorderRadius.circular(
+                                                5),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              Container(
+                                                width: MediaQuery
+                                                    .of(context)
+                                                    .size
+                                                    .width,
+                                                decoration: const BoxDecoration(
+                                                  color: Colors.green,
+                                                ),
+                                                child: const Padding(
+                                                  padding: EdgeInsets.only(
+                                                      left: 12,
+                                                      top: 5,
+                                                      right: 5,
+                                                      bottom: 5),
+                                                  child: Text('x Margin(%)',
+                                                    style: TextStyle(
+                                                        color: Color(
+                                                            0xffffffff),
+                                                        fontSize: 20),),
+                                                ),
                                               ),
+                                              Padding(
+                                                  padding: const EdgeInsets.all(
+                                                      16),
+                                                  child: allComponents
+                                                      .buildTextFormField(
+                                                    labelText: '',
+                                                  )
+                                              )
                                             ],
                                           ),
                                         ),
-                                      Padding(
-                                          padding: const EdgeInsets.all(16),
-                                          child: GestureDetector(
-                                              onTap: pickImage,
-                                              child: Container(
-                                                  width: 200,
-                                                  height: 200,
-                                                  decoration: BoxDecoration(
-                                                    color: const Color(
-                                                        0xffeeeeee),
-                                                    border: Border.all(
-                                                      color: const Color(
-                                                          0xffa1a0a1),
-                                                      width: 1,
-                                                    ),
-                                                    borderRadius: BorderRadius
-                                                        .circular(5),
-                                                  ),
-                                                  child: const Column(
-                                                      mainAxisAlignment: MainAxisAlignment
-                                                          .center,
-                                                      children: [
-                                                        Icon(
-                                                          Icons
-                                                              .add_photo_alternate,
-                                                          size: 100,
-                                                          color: Color(
-                                                              0xff9e9e9e),
-                                                        ),
-                                                        Text(
-                                                            'Select product images',
-                                                            style: TextStyle(
-                                                                fontSize: 16,
-                                                                color: Color(
-                                                                    0xff797676),
-                                                                fontWeight: FontWeight
-                                                                    .bold))
-                                                      ]
+                                        Container(
+                                          width: MediaQuery
+                                              .of(context)
+                                              .size
+                                              .width,
+                                          decoration: BoxDecoration(
+                                            border: Border.all(
+                                                color: const Color(0xffa1a0a1)),
+                                            borderRadius: BorderRadius.circular(
+                                                5),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              Container(
+                                                width: MediaQuery
+                                                    .of(context)
+                                                    .size
+                                                    .width,
+                                                decoration: const BoxDecoration(
+                                                  color: Colors.green,
+                                                ),
+                                                child: const Padding(
+                                                  padding: EdgeInsets.only(
+                                                      left: 12,
+                                                      top: 5,
+                                                      right: 5,
+                                                      bottom: 5),
+                                                  child: Text(
+                                                    'Default Selling Price',
+                                                    style: TextStyle(
+                                                        color: Color(
+                                                            0xffffffff),
+                                                        fontSize: 20),),
+                                                ),
+                                              ),
+                                              Padding(
+                                                  padding: const EdgeInsets.all(
+                                                      16),
+                                                  child: allComponents
+                                                      .buildTextFormField(
+                                                    labelText: 'Exc. Tax',
                                                   )
-                                              ))
-                                      )
-                                    ],
-                                  ),
-                                )
-                              ],
-                            ), context)
+                                              )
+                                            ],
+                                          ),
+                                        )
+                                      ],
+                                    ), context),
+                                const SizedBox(height: 16.0),
+                                allComponents
+                                    .buildResponsiveWidget(
+                                    Column(
+                                      children: [
+                                        Container(
+                                          width: MediaQuery
+                                              .of(context)
+                                              .size
+                                              .width,
+                                          decoration: BoxDecoration(
+                                            border: Border.all(
+                                                color: const Color(0xffa1a0a1)),
+                                            borderRadius: BorderRadius.circular(
+                                                5),
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              Container(
+                                                width: MediaQuery
+                                                    .of(context)
+                                                    .size
+                                                    .width,
+                                                decoration: const BoxDecoration(
+                                                  color: Colors.green,
+                                                ),
+                                                child: const Padding(
+                                                  padding: EdgeInsets.only(
+                                                      left: 12,
+                                                      top: 5,
+                                                      right: 5,
+                                                      bottom: 5),
+                                                  child: Text('Product image',
+                                                    style: TextStyle(
+                                                        color: Color(
+                                                            0xffffffff),
+                                                        fontSize: 20),),
+                                                ),
+                                              ),
+                                              if(images.isNotEmpty)
+                                                SingleChildScrollView(
+                                                  padding: const EdgeInsets
+                                                      .only(
+                                                      top: 11),
+                                                  child: Column(
+                                                    children: <Widget>[
+                                                      // Other widgets...
+                                                      GridView.builder(
+                                                        shrinkWrap: true,
+                                                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                                          crossAxisSpacing: 0,
+                                                          mainAxisSpacing: 0,
+                                                          crossAxisCount: 3,
+                                                        ),
+                                                        itemCount: images
+                                                            .length,
+                                                        itemBuilder: (context,
+                                                            index) {
+                                                          return GestureDetector(
+                                                            onTap: () {
+
+                                                            },
+                                                            child: Container(
+                                                              margin: const EdgeInsets
+                                                                  .all(5),
+                                                              decoration: BoxDecoration(
+                                                                image: DecorationImage(
+                                                                  fit: BoxFit
+                                                                      .cover,
+                                                                  image: FileImage(
+                                                                      File(
+                                                                          images[index]
+                                                                              .path)),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              Padding(
+                                                  padding: const EdgeInsets.all(
+                                                      16),
+                                                  child: GestureDetector(
+                                                      onTap: pickImage,
+                                                      child: Container(
+                                                          width: 200,
+                                                          height: 200,
+                                                          decoration: BoxDecoration(
+                                                            color: const Color(
+                                                                0xffeeeeee),
+                                                            border: Border.all(
+                                                              color: const Color(
+                                                                  0xffa1a0a1),
+                                                              width: 1,
+                                                            ),
+                                                            borderRadius: BorderRadius
+                                                                .circular(5),
+                                                          ),
+                                                          child: const Column(
+                                                              mainAxisAlignment: MainAxisAlignment
+                                                                  .center,
+                                                              children: [
+                                                                Icon(
+                                                                  Icons
+                                                                      .add_photo_alternate,
+                                                                  size: 100,
+                                                                  color: Color(
+                                                                      0xff9e9e9e),
+                                                                ),
+                                                                Text(
+                                                                    'Select product images',
+                                                                    style: TextStyle(
+                                                                        fontSize: 16,
+                                                                        color: Color(
+                                                                            0xff797676),
+                                                                        fontWeight: FontWeight
+                                                                            .bold))
+                                                              ]
+                                                          )
+                                                      )
+                                                  )
+                                              )
+                                            ],
+                                          ),
+                                        )
+                                      ],
+                                    ), context)
+                              ]
+                          ),
+                        Autocomplete<Product>(
+                            fieldViewBuilder: (BuildContext context,
+                                TextEditingController controller,
+                                FocusNode focusNode,
+                                VoidCallback onFieldSubmitted) {
+                              return allComponents.buildTextFormField(
+                                labelText: 'Enter Product name / SKU / Scan bar code',
+                                controller: controller,
+                                focusNode: focusNode,
+                                maxLines: 1
+                              );
+                              // return TextFormField(
+                              //   // decoration: InputDecoration(
+                              //   //   errorText: _networkError ? 'Network error, please try again.' : null,
+                              //   // ),
+                              //   controller: controller,
+                              //   focusNode: focusNode,
+                              //   onFieldSubmitted: (String value) {
+                              //     onFieldSubmitted();
+                              //   },
+                              // );
+                            },
+                            optionsBuilder: (
+                                TextEditingValue textEditingValue) async {
+                              // setState(() {
+                              //   // _networkError = false;
+                              // });
+                              // final Iterable<String>? options =
+                              // await _debouncedSearch(textEditingValue.text);
+                              // if (options == null) {
+                              //   return _lastOptions;
+                              // }
+                              // _lastOptions = options;
+                              // return options;
+                              await getSearchedProducts(textEditingValue.text);
+                              return searchProducts;
+                            },
+                            onSelected: (Product selection) {
+                              debugPrint(
+                                  'You just selected ${selection.productId}');
+                            }
+                        ),
                       ]
                   )
               )
