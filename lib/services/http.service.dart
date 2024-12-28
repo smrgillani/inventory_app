@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class RestSerice {
 
-  final String url = "http://10.72.29.212/connector/api";
+  final String url = "http://192.168.40.12/connector/api";
 
   Future<Map<String, String>?> getHeaders() async{
     SharedPreferences prefs = await SharedPreferences.getInstance();

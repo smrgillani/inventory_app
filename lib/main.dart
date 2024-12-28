@@ -66,7 +66,7 @@ class LoginScreen extends StatelessWidget {
       String username = usernameController.text;
       String password = passwordController.text;
 
-      username = "SmrGillani";
+      username = "smrgillani";
       password = "Google@123";
 
       final payload = {

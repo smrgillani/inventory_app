@@ -1,6 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+
+final String publicUrl = "192.168.40.12";
+
 Future<void> getData(String endPoint) async {
   final url = Uri.parse('https://api.example.com/data'); // Replace with your API endpoint
 
@@ -28,7 +31,7 @@ Future<Map<String, dynamic>> getToken() async {
 
   try {
     final tokenUrl = Uri.parse(
-        'http://10.72.29.212/connector/api/business-register'); // Replace with the token endpoint URL
+        'http://$publicUrl/connector/api/business-register'); // Replace with the token endpoint URL
     final response = await http.get(
       tokenUrl,
       headers: {
@@ -64,7 +67,7 @@ Future<Map<String, dynamic>> getToken() async {
 }
 
 Future<Map<String, dynamic>> sendFormData(Map<String, dynamic> formData, String cookie) async {
-  const String url = 'http://10.72.29.212/connector/api/business-register';
+  final String url = 'http://$publicUrl/connector/api/business-register';
   // final String filePath = '/path/to/your/file.png';
 
   final headers = {

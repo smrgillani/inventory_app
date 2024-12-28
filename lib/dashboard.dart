@@ -6,7 +6,10 @@ import 'package:gs_erp/categories.dart';
 import 'package:gs_erp/main.dart';
 import 'package:gs_erp/products.dart';
 import 'package:gs_erp/units.dart';
+import 'package:gs_erp/variations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'models/Global.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -31,6 +34,7 @@ class DashboardState extends State<Dashboard> {
   void initState() {
     // TODO: implement initState
     super.initState();
+    fetchGlobalData();
   }
 
   @override
@@ -237,6 +241,12 @@ class DashboardState extends State<Dashboard> {
                     title: const Text("Add Product"),
                     onTap: () {
                       Navigator.push(context,MaterialPageRoute(builder: (context) => const AddProduct()));
+                    },
+                  ),
+                  ListTile(
+                    title: const Text("Variations"),
+                    onTap: () {
+                      Navigator.push(context,MaterialPageRoute(builder: (context) => const VariationScreen()));
                     },
                   ),
                   ListTile(
