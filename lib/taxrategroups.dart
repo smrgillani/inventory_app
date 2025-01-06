@@ -1,21 +1,22 @@
+import 'dart:convert';
+
 import 'package:dropdown_search/dropdown_search.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gs_erp/services/http.service.dart';
 
 import 'main.dart';
-import 'models/Category.dart';
+import 'models/BusinessLocation.dart';
+import 'models/Tax.dart';
 
-
-class CategoriesScreen extends StatefulWidget {
-  const CategoriesScreen({super.key});
+class TaxGroupScreen extends StatefulWidget {
+  const TaxGroupScreen({super.key});
 
   @override
-  CategoriesScreenState createState() => CategoriesScreenState();
+  TaxGroupScreenState createState() => TaxGroupScreenState();
 }
 
-class CategoriesScreenState extends State<CategoriesScreen> {
+class TaxGroupScreenState extends State<TaxGroupScreen> {
 
   late TextStyle buttonTextStyle = const TextStyle(
       fontSize: 15, fontWeight: FontWeight.bold);
@@ -36,50 +37,50 @@ class CategoriesScreenState extends State<CategoriesScreen> {
 
   final List<String> items = List<String>.generate(100, (i) => '$i');
 
-  late List<ProductCategory> categories = [];
+  late List<Tax> taxrategroups = [];
 
-  bool showCategoriesList = false;
+  bool showTaxGroupsList = false;
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    getAllCategories();
+    getAllTaxGroups();
   }
 
-  getAllCategories() async {
-    categories = [];
-    dynamic response = await RestSerice().getData('/taxonomy');
-    List<dynamic> categoryList = (response['data'] as List).cast<dynamic>();
+  getAllTaxGroups() async {
+    taxrategroups = [];
+    dynamic response = await RestSerice().getData('/tax');
+    List<dynamic> taxList = (response['data'] as List).cast<dynamic>();
 
-    for(var category in categoryList){
-      categories.add(ProductCategory(id: category['id'], name: category['name'], shortCode: category['short_code'], description: category['description']));
+    for(var tax in taxList){
+      taxrategroups.add(Tax(id: tax['id'], name: tax['name'], amount: double.parse(tax['amount'].toString()), isTaxGroup: tax['is_tax_group'] == 1, forTaxGroup: tax['for_tax_group'] == 1));
     }
 
     setState(() {
-      showCategoriesList = true;
+      showTaxGroupsList = true;
     });
 
   }
 
-  addCategory() async {
+  addTaxRate() async {
     await showDialog(context: context, barrierDismissible: false, builder: (BuildContext context){
       return const AlertDialog(
-        title: Text('Add New Category'),
-        content: CategoryForm(),
+        title: Text('Add New Tax Rate'),
+        content: TaxRateForm(),
       );
     });
-    await getAllCategories();
+    await getAllTaxes();
   }
 
-  deleteCategory(int id) async {
+  deleteTaxRate(int id) async {
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text("Confirm Delete"),
-          content: const Text("Are you sure you want to delete this Record?"),
+          title: const Text("Confirm Tax rate"),
+          content: const Text("Are you sure you want to delete this Tax Rate?"),
           actions: [
             TextButton(
               onPressed: () {
@@ -89,8 +90,8 @@ class CategoriesScreenState extends State<CategoriesScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                dynamic response = await RestSerice().delData('/taxonomy/$id');
-                await getAllCategories();
+                dynamic response = await RestSerice().delData('/tax/$id');
+                await getAllTaxes();
                 Navigator.pop(context);
               },
               child: const Text("Delete"),
@@ -101,14 +102,14 @@ class CategoriesScreenState extends State<CategoriesScreen> {
     );
   }
 
-  editCategory(int id) async {
+  editTaxRate(int id) async {
     await showDialog(context: context, barrierDismissible: false, builder: (BuildContext context){
       return AlertDialog(
-        title: const Text('Edit Category'),
-        content: CategoryForm(id: id),
+        title: const Text('Edit Tax Rate'),
+        content: TaxRateForm(id: id),
       );
     });
-    await getAllCategories();
+    await getAllTaxes();
   }
 
   @override
@@ -142,13 +143,14 @@ class CategoriesScreenState extends State<CategoriesScreen> {
                     padding: EdgeInsets.only(top: 32, left: 16),
                     child: Row(
                       children: [
-                        Text('Categories',
+                        Text('Tax Rates',
                             style: TextStyle(
                                 fontSize: 28, fontWeight: FontWeight.bold)
                         ),
                         Padding(
                             padding: EdgeInsets.only(left: 5, top: 7),
-                            child: Text('Manage your categories', style: TextStyle(
+                            child: Text(
+                                'Manage your tax rates', style: TextStyle(
                                 fontSize: 18))
                         )
                       ],
@@ -266,7 +268,7 @@ class CategoriesScreenState extends State<CategoriesScreen> {
                         const SizedBox(width: 8),
                         OutlinedButton(
                             onPressed: () {
-                              addCategory();
+                              addTaxRate();
                             },
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.all(0),
@@ -296,41 +298,46 @@ class CategoriesScreenState extends State<CategoriesScreen> {
                       ],
                     ),
                   ),
-                  if(showCategoriesList)
+                  if(showTaxesList)
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: ListView.separated(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          itemCount: categories.length,
+                          itemCount: taxrates.length,
                           separatorBuilder: (BuildContext context, int index) {
                             return const Divider();
                           },
                           itemBuilder: (context, index) {
                             return Container(
                               color: Colors.white,
-                              child: ListTile(
+                              child: ExpansionTile(
                                 leading: CircleAvatar(
                                   backgroundColor: Colors.black,
                                   foregroundColor: Colors.white,
                                   child: Text((index + 1).toString()),
                                 ),
-                                title: Text(categories[index].name),
-                                subtitle: Row(
-                                  children: [
-                                    Text(categories[index].description ?? "", style: const TextStyle(
-                                        fontWeight: FontWeight.bold)
-                                    ),
-                                  ],
+                                title: Text('${taxrates[index].name} ${(taxrates[index].forTaxGroup! ? '(For tax group only)':'')} '),
+                                subtitle: Column(
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Text('Amount: ',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold)),
+                                          Text('${taxrates[index].amount}%')
+                                        ],
+                                      ),
+                                    ]
                                 ),
                                 trailing: PopupMenuButton<String>(
                                   onSelected: (value) {
                                     switch (value.toLowerCase()) {
                                       case 'edit':
-                                        editCategory(categories[index].id);
+                                        editTaxRate(taxrates[index].id);
                                         break;
                                       case 'delete':
-                                        deleteCategory(categories[index].id);
+                                        deleteTaxRate(taxrates[index].id);
                                         break;
                                     }
                                   },
@@ -357,221 +364,167 @@ class CategoriesScreenState extends State<CategoriesScreen> {
   }
 }
 
-class CategoryForm extends StatefulWidget {
+class TaxRateForm extends StatefulWidget {
   final int? id;
-  const CategoryForm({Key? key, this.id}) : super(key: key);
+  const TaxRateForm({Key? key, this.id}) : super(key: key);
 
   @override
-  CategoryFormState createState()=> CategoryFormState();
+  TaxRateFormState createState()=> TaxRateFormState();
 }
 
-class CategoryFormState extends State<CategoryForm>{
+class TaxRateFormState extends State<TaxRateForm>{
 
-  final TextEditingController categoryNameController = TextEditingController();
-  final TextEditingController categoryShortCodeController = TextEditingController();
-  final TextEditingController categoryDescriptionController = TextEditingController();
-  bool allowAddAsSubCategory = false;
+  late TextStyle buttonTextStyle = const TextStyle(
+      fontSize: 15, fontWeight: FontWeight.bold);
+  final TextEditingController taxNameController = TextEditingController();
+  final TextEditingController taxAmountController = TextEditingController();
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-  late List<ProductCategory> categories = [];
-  late String categoryName = "";
-  late int baseCategoryId = 0;
   late bool success = false;
   late String successMsg = "";
   late bool error = false;
   late String errorMsg = "";
-  late int categoryId = 0;
-  late ProductCategory selectedSubCategory = ProductCategory(id: 0, name: 'Select parent category');
+  late int taxId = 0;
+  late bool forTaxGroupOnly = false;
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    categoryId = widget.id ?? 0;
-    getCategories();
-    if(categoryId > 0){
-      getCategory(categoryId);
+    taxId = widget.id ?? 0;
+
+    if(taxId > 0) {
+      getTable(taxId);
     }
   }
 
-  getCategories() async{
-    dynamic response = await RestSerice().getData("/taxonomy");
-    List<dynamic> categoryList = (response['data'] as List).cast<dynamic>();
-    if(categoryId > 0) {
-      for (dynamic category in categoryList) {
-        if (categoryId != category['id']) {
-          categories.add(ProductCategory(name: category['name'], id: category['id']));
-        }
-      }
-    }else{
-      for (dynamic category in categoryList) {
-        categories.add(ProductCategory(name: category['name'], id: category['id']));
-      }
-    }
-  }
+  getTable(int id) async{
 
-  getCategory(int id) async{
-    dynamic response = await RestSerice().getData("/taxonomy/$id");
-    List<dynamic> categoryList = (response['data'] as List).cast<dynamic>();
-    dynamic category = categoryList.isNotEmpty ? categoryList[0] : null;
+    dynamic response = await RestSerice().getData("/tax/$id");
+    List<dynamic> taxList = (response['data'] as List).cast<dynamic>();
+    dynamic tax = taxList.isNotEmpty ? taxList[0] : null;
 
-    categoryNameController.text = category['name'];
-    categoryShortCodeController.text = category['short_code'];
+    taxNameController.text = tax['name'];
+    taxAmountController.text = tax['amount'].toString();
+
     setState(() {
-      allowAddAsSubCategory = category['allow_decimal'] == 1 ? true : false;
+      taxId = tax['id'];
+      forTaxGroupOnly = tax['for_tax_group'] == 1;
     });
 
-    categoryDescriptionController.text = category['description'];
   }
 
   @override
   Widget build(BuildContext context) {
     return Form(
-      key: formKey,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if(error)
-            Text(errorMsg,
-                style: const TextStyle(color: Colors.red, fontSize: 18)),
-          if(success)
-            Text(successMsg,
-                style: const TextStyle(color: Colors.green, fontSize: 18)),
-          const SizedBox(height: 16.0),
-          if(!success)
-            Column(
-              children: [
-                AllComponents().buildTextFormField(
-                    labelText: 'Name',
-                    controller: categoryNameController,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please specify category name.';
-                      }
-                      return null;
-                    },
-                    onChanged: (value) {
-                      setState(() {
-                        categoryName = value;
-                      });
-                    }
-                ),
-                const SizedBox(height: 16.0),
-                AllComponents().buildTextFormField(
-                  labelText: 'Short Code',
-                  controller: categoryShortCodeController
-                ),
-                const SizedBox(height: 16.0),
-                AllComponents().buildTextFormField(
-                    labelText: 'Description',
-                    controller: categoryDescriptionController,
-                    // keyboardType: TextInputType.multiline,
-                    // maxLines: 3
-                ),
-                const SizedBox(height: 16.0),
-                CheckboxListTile(
-                  value: allowAddAsSubCategory,
-                  controlAffinity: ListTileControlAffinity
-                      .leading,
-                  tristate: false,
-                  title: const Text('Add as sub category'),
-                  onChanged: (value) {
-                    setState(() {
-                      allowAddAsSubCategory = value!;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16.0),
-                if(allowAddAsSubCategory)
-                  Column(
+        key: formKey,
+        child: SingleChildScrollView(
+            child: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if(error)
+                    Text(errorMsg,
+                        style: const TextStyle(
+                            color: Colors.red, fontSize: 18)),
+                  if(success)
+                    Text(successMsg,
+                        style: const TextStyle(
+                            color: Colors.green, fontSize: 18)),
+                  const SizedBox(height: 16.0),
+                  if(!success)
+                    Column(
+                      children: [
+                        AllComponents().buildTextFormField(
+                          labelText: 'Name',
+                          controller: taxNameController,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) {
+                              return 'Please specify tax name.';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16.0),
+                        AllComponents().buildTextFormField(
+                          labelText: 'Tax Rate %',
+                          controller: taxAmountController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: <TextInputFormatter>[
+                            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                          ],
+                        ),
+                        const SizedBox(height: 16.0),
+                        CheckboxListTile(
+                          value: forTaxGroupOnly,
+                          controlAffinity: ListTileControlAffinity
+                              .leading,
+                          tristate: false,
+                          title: const Text('For tax group only'),
+                          onChanged: (value) {
+                            setState(() {
+                              forTaxGroupOnly = value!;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 16.0),
+                      ],
+                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      const SizedBox(height: 16.0),
-                      DropdownSearch<ProductCategory>(
-                        selectedItem: selectedSubCategory,
-                        popupProps: const PopupProps.menu(
-                            showSearchBox: true
+                      if(!success)
+                        ElevatedButton(
+                          onPressed: () async {
+                            if (formKey.currentState!.validate()) {
+                              Map<String, dynamic> payload = {};
+
+                              payload["name"] = taxNameController.text;
+                              payload["amount"] = taxAmountController.text;
+                              payload["for_tax_group"] = forTaxGroupOnly?1:0;
+
+                              dynamic response = taxId > 0
+                                  ? await RestSerice().putData(
+                                  "/tax/$taxId", payload)
+                                  : await RestSerice().postData(
+                                  "/tax", payload);
+
+                              if (response.containsKey('success')) {
+                                if (response['success']) {
+                                  setState(() {
+                                    successMsg = response['msg'];
+                                    success = true;
+                                  });
+                                } else {
+                                  setState(() {
+                                    errorMsg = response['msg'];
+                                    error = true;
+                                  });
+                                }
+                              } else {
+                                setState(() {
+                                  errorMsg =
+                                  "Something went wrong, please try again later";
+                                  error = true;
+                                });
+                              }
+                            }
+                          },
+                          child: const Text('Save'),
                         ),
-                        items: categories,
-                        dropdownDecoratorProps: const DropDownDecoratorProps(
-                          dropdownSearchDecoration: InputDecoration(
-                            hintText: 'Please select a sub category',
-                            labelText: 'Select base category',
-                            border: OutlineInputBorder(
-                                borderRadius: BorderRadius.all(
-                                    Radius.circular(
-                                        4.0))
-                            ),
-                          ),
-                        ),
-                        onChanged: (e) {
-                          setState(() {
-                            baseCategoryId = e!.id;
-                          });
+                      const SizedBox(width: 16.0),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context); // Close the popup
                         },
+                        child: const Text('Close'),
                       ),
-                      const SizedBox(height: 16.0),
                     ],
-                  ),
-              ],
-            ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              if(!success)
-                ElevatedButton(
-                  onPressed: () async {
-                    if (formKey.currentState!.validate()) {
-                      Map<String, dynamic> payload = {};
-
-                      payload["category_type"] = "product";
-                      payload["name"] = categoryNameController.text;
-                      payload["short_code"] = categoryShortCodeController.text;
-                      payload["description"] = categoryDescriptionController.text;
-
-                      if(baseCategoryId > 0 && allowAddAsSubCategory) {
-                        payload["add_as_sub_cat"] = "1";
-                        payload["parent_id"] = baseCategoryId.toString();
-                      }
-
-                      dynamic response = categoryId > 0 ? await RestSerice().putData(
-                          "/taxonomy/$categoryId", payload) : await RestSerice().postData(
-                          "/taxonomy", payload);
-
-                      if (response.containsKey('success')) {
-                        if (response['success']) {
-                          // Navigator.pop(context);
-
-                          setState(() {
-                            successMsg = response['msg'];
-                            success = true;
-                          });
-                        } else {
-                          setState(() {
-                            errorMsg = response['msg'];
-                            error = true;
-                          });
-                        }
-                      } else {
-                        setState(() {
-                          errorMsg =
-                          "Something went wrong, please try again later";
-                          error = true;
-                        });
-                      }
-                    }
-                  },
-                  child: const Text('Save'),
-                ),
-              const SizedBox(width: 16.0),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context); // Close the popup
-                },
-                child: const Text('Close'),
+                  )
+                ],
               ),
-            ],
-          )
-        ],
-      ),
+            )
+        )
     );
   }
 }

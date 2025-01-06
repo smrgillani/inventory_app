@@ -12,6 +12,8 @@ class RestSerice {
 
     Map<String, String>? headers = {};
 
+    headers["Content-Type"] = "application/json";
+
     if((storedToken.isNotEmpty)){
       headers["Authorization"] = "Bearer $storedToken";
     }
@@ -52,7 +54,7 @@ class RestSerice {
   Future<dynamic> postData(String endPoint, Map<String, dynamic> body) async {
     final url = Uri.parse(this.url + endPoint);
     try {
-      final response = await http.post(url, headers: await getHeaders(), body: body);
+      final response = await http.post(url, headers: await getHeaders(), body: jsonEncode(body));
       if (response.statusCode == 200 || response.statusCode == 201) {
         final jsonData = json.decode(response.body);
         return jsonData;
@@ -67,7 +69,7 @@ class RestSerice {
   Future<dynamic> putData(String endPoint, Map<String, dynamic> body) async {
     final url = Uri.parse(this.url + endPoint);
     try {
-      final response = await http.put(url, headers: await getHeaders(), body: body);
+      final response = await http.put(url, headers: await getHeaders(), body: jsonEncode(body));
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
         return jsonData;
@@ -75,6 +77,7 @@ class RestSerice {
         return {};
       }
     } catch (exception) {
+      print("Error $exception");
       return {'error': exception};
     }
   }

@@ -5,6 +5,8 @@ import 'package:gs_erp/brands.dart';
 import 'package:gs_erp/categories.dart';
 import 'package:gs_erp/main.dart';
 import 'package:gs_erp/products.dart';
+import 'package:gs_erp/tables.dart';
+import 'package:gs_erp/taxrates.dart';
 import 'package:gs_erp/units.dart';
 import 'package:gs_erp/variations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -267,12 +269,6 @@ class DashboardState extends State<Dashboard> {
                       Navigator.push(context,MaterialPageRoute(builder: (context) => const CategoriesScreen()));
                     },
                   ),
-                  ListTile(
-                    title: const Text("Tables"),
-                    onTap: () {
-                      Navigator.push(context,MaterialPageRoute(builder: (context) => const CategoriesScreen()));
-                    },
-                  ),
                   // Add more sub-menu items as needed
                 ],
               ),
@@ -289,6 +285,31 @@ class DashboardState extends State<Dashboard> {
                     title: const Text("Add Purchase"),
                     onTap: () {
                       // Handle Sub-Menu Item 2 navigation
+                    },
+                  ),
+                  ListTile(
+                    title: const Text("Returned Purchases"),
+                    onTap: () {
+                      // Handle Sub-Menu Item 2 navigation
+                    },
+                  ),
+                  // Add more sub-menu items as needed
+                ],
+              ),
+              ExpansionTile(
+                title: const Text("Settings"),
+                children: <Widget>[
+                  ListTile(
+                    title: const Text("Tax Rates"),
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(
+                          builder: (context) => const TaxScreen()));
+                    },
+                  ),
+                  ListTile(
+                    title: const Text("Tables"),
+                    onTap: () {
+                      Navigator.push(context,MaterialPageRoute(builder: (context) => const TableScreen()));
                     },
                   ),
                   ListTile(

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -53,13 +55,9 @@ class VariationScreenState extends State<VariationScreen> {
 
     for(var variation in variationList){
 
-      String varValues = "";
+      String varValues = variation['values'].map((varVal) => varVal["name"].toString()).join(',');
 
-      for(var varVal in variation['values']){
-        varValues = '$varValues${varVal["name"]},';
-      }
-
-      bool isDel = (variation['total_pv'] > 0);
+      bool isDel = !(variation['total_pv'] > 0);
 
       variations.add(Variation(id: variation['id'], name: variation['name'], values: varValues, isDelete: isDel));
 
@@ -151,7 +149,7 @@ class VariationScreenState extends State<VariationScreen> {
                     padding: EdgeInsets.only(top: 32, left: 16),
                     child: Row(
                       children: [
-                        Text('Units',
+                        Text('Variations',
                             style: TextStyle(
                                 fontSize: 28, fontWeight: FontWeight.bold)
                         ),
@@ -344,12 +342,21 @@ class VariationScreenState extends State<VariationScreen> {
                                     }
                                   },
                                   itemBuilder: (BuildContext context) {
-                                    return ['Edit', 'Delete'].map((String e) {
-                                      return PopupMenuItem<String>(
-                                        value: e,
-                                        child: Text(e),
-                                      );
-                                    }).toList();
+                                    if(variations[index].isDelete) {
+                                      return ['Edit', 'Delete'].map((String e) {
+                                        return PopupMenuItem<String>(
+                                          value: e,
+                                          child: Text(e),
+                                        );
+                                      }).toList();
+                                    }else{
+                                      return ['Edit'].map((String e) {
+                                        return PopupMenuItem<String>(
+                                          value: e,
+                                          child: Text(e),
+                                        );
+                                      }).toList();
+                                    }
                                   },
                                 ),
                               ),
@@ -376,8 +383,11 @@ class VariationForm extends StatefulWidget {
 
 class VariationFormState extends State<VariationForm>{
 
+  late TextStyle buttonTextStyle = const TextStyle(
+      fontSize: 15, fontWeight: FontWeight.bold);
   final TextEditingController variationNameController = TextEditingController();
-  late List<TextEditingController> variationValueControllers = [];
+  late List<Map<int,TextEditingController>> variationValueControllers = [];
+  late List<FocusNode> variationValueFocusNodes = [];
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   late List<Variation> variations = [];
   late String variationName = "";
@@ -393,50 +403,53 @@ class VariationFormState extends State<VariationForm>{
     // TODO: implement initState
     super.initState();
     variationId = widget.id ?? 0;
-    getVariations();
+    // getVariations();
     if(variationId > 0){
       getVariation(variationId);
+    }else{
+      getVariationVals();
     }
   }
 
-  getVariations() async{
-    // dynamic response = await RestSerice().getData("/unit");
-    // List<dynamic> unitList = (response['data'] as List).cast<dynamic>();
-    // for (dynamic unit in unitList) {
-    //   units.add(Unit(name: unit['actual_name'] + '(' + unit['short_name'] + ')', id: unit['id']));
-    // }
-
-    dynamic response = await RestSerice().getData('/variations');
-    List<dynamic> variationList = (response['data'] as List).cast<dynamic>();
-
-    for(var variation in variationList){
-
-      String varValues = "";
-
-      for(var varVal in variation['values']){
-        varValues = '$varValues${varVal["name"]},';
-      }
-
-      bool isDel = (variation['total_pv'] > 0);
-
-      variations.add(Variation(id: variation['id'], name: variation['name'], values: varValues, isDelete: isDel));
-
-    }
-  }
-
-  getVariation(int id) async{
+  getVariation(int id) async {
     dynamic response = await RestSerice().getData("/variations/$id");
     List<dynamic> variationList = (response['data'] as List).cast<dynamic>();
     dynamic variation = variationList.isNotEmpty ? variationList[0] : null;
 
     variationNameController.text = variation['name'];
 
-    for(var varVal in variation['values']){
+    for (var varVal in variation['values']) {
       TextEditingController variationValueController = TextEditingController();
       variationValueController.text = varVal['name'];
-      variationValueControllers.add(variationValueController);
+      Map<int, TextEditingController> contrlr = {};
+      contrlr[varVal['id']] = variationValueController;
+      variationValueControllers.add(contrlr);
+      variationValueFocusNodes.add(FocusNode());
     }
 
+    setState(() {
+      variationId = id;
+      variationValueFocusNodes = variationValueFocusNodes;
+      variationValueControllers = variationValueControllers;
+    });
+
+    variationValueFocusNodes[variationValueFocusNodes.length - 1]
+        .requestFocus();
+  }
+
+  getVariationVals() async {
+    Map<int, TextEditingController> contrlr = {};
+    contrlr[0] = TextEditingController();
+    variationValueControllers.add(contrlr);
+    variationValueFocusNodes.add(FocusNode());
+
+    setState(() {
+      variationValueControllers = variationValueControllers;
+      variationValueFocusNodes = variationValueFocusNodes;
+    });
+
+    variationValueFocusNodes[variationValueFocusNodes.length - 1]
+        .requestFocus();
   }
 
   @override
@@ -477,16 +490,6 @@ class VariationFormState extends State<VariationForm>{
                             }
                         ),
                         const SizedBox(height: 16.0),
-                        // AllComponents().buildTextFormField(
-                        //   labelText: 'Variation Value',
-                        //   controller: unitShortNameController,
-                        //   validator: (value) {
-                        //     if (value == null || value.isEmpty) {
-                        //       return 'Please specify variation name.';
-                        //     }
-                        //     return null;
-                        //   },
-                        // ),
                         SizedBox(
                             width: double.maxFinite,
                             height: 300,
@@ -494,12 +497,148 @@ class VariationFormState extends State<VariationForm>{
                                 child: ListView.builder(
                                   shrinkWrap: true,
                                   physics: const NeverScrollableScrollPhysics(),
-                                  itemCount: 20,
+                                  itemCount: variationValueControllers.length,
                                   itemBuilder: (context, index) {
-                                    return ListTile(
-                                      leading: const Icon(Icons.star),
-                                      title: Text("Item $index"),
+
+                                    if(index == 0) {
+                                      return Container(
+                                          height: 85,
+                                          padding: const EdgeInsets.all(4),
+                                          child: Row(
+                                              mainAxisAlignment: MainAxisAlignment
+                                                  .spaceBetween,
+                                              children: [
+                                                if(variationId == 0)
+                                                  Flexible(
+                                                    child: AllComponents()
+                                                        .buildTextFormField(
+                                                      labelText: 'Variation Value',
+                                                      controller: variationValueControllers[index].values.first,
+                                                      focusNode: variationValueFocusNodes[index],
+                                                      validator: (value) {
+                                                        if (value == null ||
+                                                            value.isEmpty) {
+                                                          return 'Please specify variation value.';
+                                                        }
+                                                        return null;
+                                                      },
+                                                    ),
+                                                  ),
+                                                if(variationId > 0)
+                                                  Flexible(
+                                                    child: AllComponents()
+                                                        .buildTextFormField(
+                                                      labelText: 'Variation Value',
+                                                      controller: variationValueControllers[index].values.first,
+                                                      validator: (value) {
+                                                        if (value == null ||
+                                                            value.isEmpty) {
+                                                          return 'Please specify variation value.';
+                                                        }
+                                                        return null;
+                                                      },
+                                                    ),
+                                                  ),
+                                                const SizedBox(width: 16),
+                                                OutlinedButton(
+                                                    onPressed: () {
+                                                      setState(() {
+                                                        variationValueFocusNodes
+                                                            .add(FocusNode());
+                                                        // variationValueControllers
+                                                        //     .add(
+                                                        //     TextEditingController());
+                                                        Map<int, TextEditingController> newContrlr = {};
+                                                        newContrlr[0] = TextEditingController();
+                                                        variationValueControllers.add(newContrlr);
+                                                      });
+
+                                                      variationValueFocusNodes[variationValueFocusNodes
+                                                          .length - 1]
+                                                          .requestFocus();
+                                                    },
+                                                    style: ElevatedButton
+                                                        .styleFrom(
+                                                      padding: const EdgeInsets
+                                                          .all(0),
+                                                      textStyle: buttonTextStyle,
+                                                      foregroundColor: Colors
+                                                          .white,
+                                                      backgroundColor: const Color(
+                                                          0xff1572e8),
+                                                      shadowColor: Colors
+                                                          .yellow,
+                                                      side: const BorderSide(
+                                                          color: Color(
+                                                              0xffE0E3E7)),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius: BorderRadius
+                                                            .circular(12),
+                                                      ),
+                                                    ),
+                                                    child: const Row(
+                                                        mainAxisAlignment: MainAxisAlignment
+                                                            .center,
+                                                        children: [
+                                                          Padding(
+                                                              padding: EdgeInsets
+                                                                  .only(
+                                                                  top: 9,
+                                                                  bottom: 9,
+                                                                  left: 10,
+                                                                  right: 10),
+                                                              child: Icon(
+                                                                Icons
+                                                                    .add,
+                                                                color: Colors
+                                                                    .white,
+                                                                size: 50,)
+                                                          )
+                                                        ]
+                                                    ) // Set a tooltip for long-press
+                                                ),
+                                              ]
+                                          )
+                                      );
+                                    }
+                                    if(variationId == 0) {
+                                      return Container(
+                                          height: 85,
+                                          padding: const EdgeInsets.all(4),
+                                          child: AllComponents()
+                                              .buildTextFormField(
+                                            labelText: 'Variation Value',
+                                            controller: variationValueControllers[index].values.first,
+                                            focusNode: variationValueFocusNodes[index],
+                                            validator: (value) {
+                                              if (value == null ||
+                                                  value.isEmpty) {
+                                                return 'Please specify variation value.';
+                                              }
+                                              return null;
+                                            },
+                                          )
+                                      );
+                                    }
+
+                                    return Container(
+                                        height: 85,
+                                        padding: const EdgeInsets.all(4),
+                                        child: AllComponents()
+                                            .buildTextFormField(
+                                          labelText: 'Variation Value',
+                                          controller: variationValueControllers[index].values.first,
+                                          focusNode: variationValueFocusNodes[index],
+                                          validator: (value) {
+                                            if (value == null ||
+                                                value.isEmpty) {
+                                              return 'Please specify variation value.';
+                                            }
+                                            return null;
+                                          },
+                                        )
                                     );
+
                                   },
                                 )
                             )
@@ -517,7 +656,21 @@ class VariationFormState extends State<VariationForm>{
                               Map<String, dynamic> payload = {};
 
                               payload["name"] = variationNameController.text;
-                              // payload["variation_values"] = unitShortNameController.text;
+
+                              var varVals = [];
+
+                              Map<String, dynamic> updatesVals = {};
+
+                              for(var tec in variationValueControllers){
+                                if(tec.keys.first > 0){
+                                  updatesVals[tec.keys.first.toString()] = tec.values.first.text;
+                                }else {
+                                  varVals.add(tec.values.first.text);
+                                }
+                              }
+
+                              payload["variation_values"] = varVals;
+                              payload["edit_variation_values"] = jsonEncode(updatesVals);
 
                               dynamic response = variationId > 0
                                   ? await RestSerice().putData(
