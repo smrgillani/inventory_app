@@ -8,6 +8,7 @@ import 'package:gs_erp/services/http.service.dart';
 import 'main.dart';
 import 'models/BusinessLocation.dart';
 import 'models/Tax.dart';
+import 'models/TaxGroup.dart';
 
 class TaxGroupScreen extends StatefulWidget {
   const TaxGroupScreen({super.key});
@@ -37,7 +38,7 @@ class TaxGroupScreenState extends State<TaxGroupScreen> {
 
   final List<String> items = List<String>.generate(100, (i) => '$i');
 
-  late List<Tax> taxrategroups = [];
+  late List<TaxGroup> taxrategroups = [];
 
   bool showTaxGroupsList = false;
 
@@ -50,11 +51,11 @@ class TaxGroupScreenState extends State<TaxGroupScreen> {
 
   getAllTaxGroups() async {
     taxrategroups = [];
-    dynamic response = await RestSerice().getData('/tax');
+    dynamic response = await RestSerice().getData('/group-tax');
     List<dynamic> taxList = (response['data'] as List).cast<dynamic>();
 
     for(var tax in taxList){
-      taxrategroups.add(Tax(id: tax['id'], name: tax['name'], amount: double.parse(tax['amount'].toString()), isTaxGroup: tax['is_tax_group'] == 1, forTaxGroup: tax['for_tax_group'] == 1));
+      taxrategroups.add(TaxGroup(id: tax['id'], name: tax['name'], amount: double.parse(tax['amount'].toString()), subTaxesName: tax['sub_taxes'].map((varVal) => varVal["name"].toString()).join(', ')));
     }
 
     setState(() {
@@ -63,24 +64,24 @@ class TaxGroupScreenState extends State<TaxGroupScreen> {
 
   }
 
-  addTaxRate() async {
+  addTaxGroup() async {
     await showDialog(context: context, barrierDismissible: false, builder: (BuildContext context){
       return const AlertDialog(
-        title: Text('Add New Tax Rate'),
-        content: TaxRateForm(),
+        title: Text('Add New Tax Group'),
+        content: TaxGroupForm(),
       );
     });
-    await getAllTaxes();
+    await getAllTaxGroups();
   }
 
-  deleteTaxRate(int id) async {
+  deleteTaxGroup(int id) async {
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text("Confirm Tax rate"),
-          content: const Text("Are you sure you want to delete this Tax Rate?"),
+          title: const Text("Confirm Tax Group"),
+          content: const Text("Are you sure you want to delete this Tax Group?"),
           actions: [
             TextButton(
               onPressed: () {
@@ -90,8 +91,8 @@ class TaxGroupScreenState extends State<TaxGroupScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                dynamic response = await RestSerice().delData('/tax/$id');
-                await getAllTaxes();
+                dynamic response = await RestSerice().delData('/group-tax/$id');
+                await getAllTaxGroups();
                 Navigator.pop(context);
               },
               child: const Text("Delete"),
@@ -102,14 +103,14 @@ class TaxGroupScreenState extends State<TaxGroupScreen> {
     );
   }
 
-  editTaxRate(int id) async {
+  editTaxGroup(int id) async {
     await showDialog(context: context, barrierDismissible: false, builder: (BuildContext context){
       return AlertDialog(
-        title: const Text('Edit Tax Rate'),
-        content: TaxRateForm(id: id),
+        title: const Text('Edit Tax Group'),
+        content: TaxGroupForm(id: id),
       );
     });
-    await getAllTaxes();
+    await getAllTaxGroups();
   }
 
   @override
@@ -143,14 +144,14 @@ class TaxGroupScreenState extends State<TaxGroupScreen> {
                     padding: EdgeInsets.only(top: 32, left: 16),
                     child: Row(
                       children: [
-                        Text('Tax Rates',
+                        Text('Tax Groups',
                             style: TextStyle(
                                 fontSize: 28, fontWeight: FontWeight.bold)
                         ),
                         Padding(
                             padding: EdgeInsets.only(left: 5, top: 7),
                             child: Text(
-                                'Manage your tax rates', style: TextStyle(
+                                'Combination of multiple taxes', style: TextStyle(
                                 fontSize: 18))
                         )
                       ],
@@ -268,7 +269,7 @@ class TaxGroupScreenState extends State<TaxGroupScreen> {
                         const SizedBox(width: 8),
                         OutlinedButton(
                             onPressed: () {
-                              addTaxRate();
+                              addTaxGroup();
                             },
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.all(0),
@@ -298,13 +299,13 @@ class TaxGroupScreenState extends State<TaxGroupScreen> {
                       ],
                     ),
                   ),
-                  if(showTaxesList)
+                  if(showTaxGroupsList)
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: ListView.separated(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          itemCount: taxrates.length,
+                          itemCount: taxrategroups.length,
                           separatorBuilder: (BuildContext context, int index) {
                             return const Divider();
                           },
@@ -317,7 +318,7 @@ class TaxGroupScreenState extends State<TaxGroupScreen> {
                                   foregroundColor: Colors.white,
                                   child: Text((index + 1).toString()),
                                 ),
-                                title: Text('${taxrates[index].name} ${(taxrates[index].forTaxGroup! ? '(For tax group only)':'')} '),
+                                title: Text(taxrategroups[index].name),
                                 subtitle: Column(
                                     children: [
                                       Row(
@@ -325,7 +326,12 @@ class TaxGroupScreenState extends State<TaxGroupScreen> {
                                           const Text('Amount: ',
                                               style: TextStyle(
                                                   fontWeight: FontWeight.bold)),
-                                          Text('${taxrates[index].amount}%')
+                                          Text('${taxrategroups[index].amount}% '),
+                                          const Text(' - '),
+                                          const Text(' Sub Taxes: ',
+                                              style: TextStyle(
+                                                  fontWeight: FontWeight.bold)),
+                                          Text(taxrategroups[index].subTaxesName!)
                                         ],
                                       ),
                                     ]
@@ -334,10 +340,10 @@ class TaxGroupScreenState extends State<TaxGroupScreen> {
                                   onSelected: (value) {
                                     switch (value.toLowerCase()) {
                                       case 'edit':
-                                        editTaxRate(taxrates[index].id);
+                                        editTaxGroup(taxrategroups[index].id);
                                         break;
                                       case 'delete':
-                                        deleteTaxRate(taxrates[index].id);
+                                        deleteTaxGroup(taxrategroups[index].id);
                                         break;
                                     }
                                   },
@@ -364,54 +370,73 @@ class TaxGroupScreenState extends State<TaxGroupScreen> {
   }
 }
 
-class TaxRateForm extends StatefulWidget {
+class TaxGroupForm extends StatefulWidget {
   final int? id;
-  const TaxRateForm({Key? key, this.id}) : super(key: key);
+  const TaxGroupForm({Key? key, this.id}) : super(key: key);
 
   @override
-  TaxRateFormState createState()=> TaxRateFormState();
+  TaxGroupFormState createState()=> TaxGroupFormState();
 }
 
-class TaxRateFormState extends State<TaxRateForm>{
+class TaxGroupFormState extends State<TaxGroupForm>{
 
   late TextStyle buttonTextStyle = const TextStyle(
       fontSize: 15, fontWeight: FontWeight.bold);
-  final TextEditingController taxNameController = TextEditingController();
-  final TextEditingController taxAmountController = TextEditingController();
+  final TextEditingController groupNameController = TextEditingController();
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   late bool success = false;
   late String successMsg = "";
   late bool error = false;
   late String errorMsg = "";
-  late int taxId = 0;
-  late bool forTaxGroupOnly = false;
+  late int taxGroupId = 0;
+  late List<Tax> taxrates = [];
+  late List<Tax> selectedTaxrates = [];
+  late List<int> taxIds = [];
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    taxId = widget.id ?? 0;
-
-    if(taxId > 0) {
-      getTable(taxId);
+    taxGroupId = widget.id ?? 0;
+    if(taxGroupId > 0) {
+      getTable(taxGroupId);
     }
+
+    getTaxes();
   }
 
   getTable(int id) async{
 
-    dynamic response = await RestSerice().getData("/tax/$id");
+    dynamic response = await RestSerice().getData("/group-tax/$id");
     List<dynamic> taxList = (response['data'] as List).cast<dynamic>();
     dynamic tax = taxList.isNotEmpty ? taxList[0] : null;
 
-    taxNameController.text = tax['name'];
-    taxAmountController.text = tax['amount'].toString();
+    groupNameController.text = tax['name'];
+
+    for(var subTax in tax['sub_taxes']){
+      taxIds.add(subTax['id']);
+      selectedTaxrates.add(Tax(id: subTax['id'], name: subTax['name']));
+    }
 
     setState(() {
-      taxId = tax['id'];
-      forTaxGroupOnly = tax['for_tax_group'] == 1;
+      taxGroupId = tax['id'];
+      taxIds = taxIds;
+      selectedTaxrates = selectedTaxrates;
     });
 
   }
+
+  getTaxes() async{
+    dynamic response = await RestSerice().getData("/tax");
+    List<dynamic> taxList = (response['data'] as List).cast<dynamic>();
+    for (dynamic tax in taxList) {
+      taxrates.add(Tax(id: tax['id'], name: tax['name']));
+    }
+    setState(() {
+      taxrates = taxrates;
+    });
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -437,7 +462,7 @@ class TaxRateFormState extends State<TaxRateForm>{
                       children: [
                         AllComponents().buildTextFormField(
                           labelText: 'Name',
-                          controller: taxNameController,
+                          controller: groupNameController,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Please specify tax name.';
@@ -446,27 +471,30 @@ class TaxRateFormState extends State<TaxRateForm>{
                           },
                         ),
                         const SizedBox(height: 16.0),
-                        AllComponents().buildTextFormField(
-                          labelText: 'Tax Rate %',
-                          controller: taxAmountController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: <TextInputFormatter>[
-                            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                          ],
-                        ),
-                        const SizedBox(height: 16.0),
-                        CheckboxListTile(
-                          value: forTaxGroupOnly,
-                          controlAffinity: ListTileControlAffinity
-                              .leading,
-                          tristate: false,
-                          title: const Text('For tax group only'),
-                          onChanged: (value) {
-                            setState(() {
-                              forTaxGroupOnly = value!;
-                            });
-                          },
-                        ),
+                        if(taxrates.isNotEmpty || selectedTaxrates.isNotEmpty)
+                          DropdownSearch<Tax>.multiSelection(
+                            // popupProps: PopupProps.menu(
+                            //     showSearchBox: true
+                            // ),
+                            items: taxrates,
+                            selectedItems: selectedTaxrates,
+                            dropdownDecoratorProps: const DropDownDecoratorProps(
+                              dropdownSearchDecoration: InputDecoration(
+                                hintText: 'Please select a tax',
+                                labelText: 'Sub Taxes:',
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.all(
+                                        Radius.circular(
+                                            4.0))
+                                ),
+                              ),
+                            ),
+                            onChanged: (List<Tax> taxes) {
+                              setState(() {
+                                taxIds = taxes.map((e) => e.id).toList();
+                              });
+                            },
+                          ),
                         const SizedBox(height: 16.0),
                       ],
                     ),
@@ -479,15 +507,14 @@ class TaxRateFormState extends State<TaxRateForm>{
                             if (formKey.currentState!.validate()) {
                               Map<String, dynamic> payload = {};
 
-                              payload["name"] = taxNameController.text;
-                              payload["amount"] = taxAmountController.text;
-                              payload["for_tax_group"] = forTaxGroupOnly?1:0;
+                              payload["name"] = groupNameController.text;
+                              payload["taxes"] = taxIds;
 
-                              dynamic response = taxId > 0
+                              dynamic response = taxGroupId > 0
                                   ? await RestSerice().putData(
-                                  "/tax/$taxId", payload)
+                                  "/group-tax/$taxGroupId", payload)
                                   : await RestSerice().postData(
-                                  "/tax", payload);
+                                  "/group-tax", payload);
 
                               if (response.containsKey('success')) {
                                 if (response['success']) {

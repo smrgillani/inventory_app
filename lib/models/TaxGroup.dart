@@ -1,10 +1,9 @@
-class Tax{
+class TaxGroup{
   final int id;
   final String name;
-  double? amount;
-  bool? isTaxGroup;
-  bool? forTaxGroup;
-  Tax({required this.id, required this.name, this.amount, this.isTaxGroup, this.forTaxGroup});
+  final double? amount;
+  String? subTaxesName;
+  TaxGroup({required this.id, required this.name, this.amount, this.subTaxesName});
 
   @override
   String toString() {

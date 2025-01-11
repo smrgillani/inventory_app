@@ -5,10 +5,13 @@ import 'package:gs_erp/brands.dart';
 import 'package:gs_erp/categories.dart';
 import 'package:gs_erp/main.dart';
 import 'package:gs_erp/products.dart';
+import 'package:gs_erp/sellingpricegroups.dart';
 import 'package:gs_erp/tables.dart';
+import 'package:gs_erp/taxrategroups.dart';
 import 'package:gs_erp/taxrates.dart';
 import 'package:gs_erp/units.dart';
 import 'package:gs_erp/variations.dart';
+import 'package:gs_erp/warranties.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models/Global.dart';
@@ -252,9 +255,21 @@ class DashboardState extends State<Dashboard> {
                     },
                   ),
                   ListTile(
+                    title: const Text("Selling Price Group"),
+                    onTap: () {
+                      Navigator.push(context,MaterialPageRoute(builder: (context) => const PriceGroupScreen()));
+                    },
+                  ),
+                  ListTile(
                     title: const Text("Units"),
                     onTap: () {
                       Navigator.push(context,MaterialPageRoute(builder: (context) => const UnitsScreen()));
+                    },
+                  ),
+                  ListTile(
+                    title: const Text("Categories"),
+                    onTap: () {
+                      Navigator.push(context,MaterialPageRoute(builder: (context) => const CategoriesScreen()));
                     },
                   ),
                   ListTile(
@@ -262,11 +277,10 @@ class DashboardState extends State<Dashboard> {
                     onTap: () {
                       Navigator.push(context,MaterialPageRoute(builder: (context) => const BrandsScreen()));
                     },
-                  ),
-                  ListTile(
-                    title: const Text("Categories"),
+                  ),ListTile(
+                    title: const Text("Warranties"),
                     onTap: () {
-                      Navigator.push(context,MaterialPageRoute(builder: (context) => const CategoriesScreen()));
+                      Navigator.push(context,MaterialPageRoute(builder: (context) => const WarrantiesScreen()));
                     },
                   ),
                   // Add more sub-menu items as needed
@@ -304,6 +318,13 @@ class DashboardState extends State<Dashboard> {
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute(
                           builder: (context) => const TaxScreen()));
+                    },
+                  ),
+                  ListTile(
+                    title: const Text("Tax Rates Groups"),
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(
+                          builder: (context) => const TaxGroupScreen()));
                     },
                   ),
                   ListTile(

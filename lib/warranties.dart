@@ -1,22 +1,21 @@
-import 'dart:convert';
-
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:gs_erp/models/Brand.dart';
+import 'package:gs_erp/models/Warranty.dart';
 import 'package:gs_erp/services/http.service.dart';
 
 import 'main.dart';
-import 'models/BusinessLocation.dart';
-import 'models/Tax.dart';
+import 'models/Unit.dart';
 
-class TaxScreen extends StatefulWidget {
-  const TaxScreen({super.key});
+class WarrantiesScreen extends StatefulWidget {
+  const WarrantiesScreen({super.key});
 
   @override
-  TaxScreenState createState() => TaxScreenState();
+  WarrantiesScreenState createState() => WarrantiesScreenState();
 }
 
-class TaxScreenState extends State<TaxScreen> {
+class WarrantiesScreenState extends State<WarrantiesScreen> {
 
   late TextStyle buttonTextStyle = const TextStyle(
       fontSize: 15, fontWeight: FontWeight.bold);
@@ -35,52 +34,52 @@ class TaxScreenState extends State<TaxScreen> {
     ),
   );
 
-  final List<String> items = List<String>.generate(100, (i) => '$i');
+  late List<Warranty> warranties = [];
 
-  late List<Tax> taxrates = [];
-
-  bool showTaxesList = false;
+  bool showWarrantiesList = false;
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    getAllTaxes();
+    getAllWarranties();
   }
 
-  getAllTaxes() async {
-    taxrates = [];
-    dynamic response = await RestSerice().getData('/tax');
-    List<dynamic> taxList = (response['data'] as List).cast<dynamic>();
+  getAllWarranties() async {
+    warranties = [];
+    dynamic response = await RestSerice().getData('/warranty');
+    List<dynamic> warrantyList = (response['data'] as List).cast<dynamic>();
+    final Map<String, String> durationTypes = {"days": "Days", "months": "Months", "years":"Years"};
 
-    for(var tax in taxList){
-      taxrates.add(Tax(id: tax['id'], name: tax['name'], amount: double.parse(tax['amount'].toString()), isTaxGroup: tax['is_tax_group'] == 1, forTaxGroup: tax['for_tax_group'] == 1));
+    for(var warranty in warrantyList){
+      final String? drtnType = durationTypes[warranty['duration_type'].toString()];
+      warranties.add(Warranty(id: warranty['id'], name: warranty['name'], description: warranty['description'], duration: double.parse(warranty['duration'].toString()), durationType: drtnType ?? ""));
     }
 
     setState(() {
-      showTaxesList = true;
+      showWarrantiesList = true;
     });
 
   }
 
-  addTaxRate() async {
+  addWarranty() async {
     await showDialog(context: context, barrierDismissible: false, builder: (BuildContext context){
       return const AlertDialog(
-        title: Text('Add New Tax Rate'),
-        content: TaxRateForm(),
+        title: Text('Add New Warranty'),
+        content: WarrantyForm(),
       );
     });
-    await getAllTaxes();
+    await getAllWarranties();
   }
 
-  deleteTaxRate(int id) async {
+  deleteWarranty(int id) async {
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text("Confirm Tax Rate"),
-          content: const Text("Are you sure you want to delete this Tax Rate?"),
+          title: const Text("Confirm Delete"),
+          content: const Text("Are you sure you want to delete this Record?"),
           actions: [
             TextButton(
               onPressed: () {
@@ -90,8 +89,8 @@ class TaxScreenState extends State<TaxScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                dynamic response = await RestSerice().delData('/tax/$id');
-                await getAllTaxes();
+                dynamic response = await RestSerice().delData('/warranty/$id');
+                await getAllWarranties();
                 Navigator.pop(context);
               },
               child: const Text("Delete"),
@@ -102,14 +101,14 @@ class TaxScreenState extends State<TaxScreen> {
     );
   }
 
-  editTaxRate(int id) async {
+  editWarranty(int id) async {
     await showDialog(context: context, barrierDismissible: false, builder: (BuildContext context){
       return AlertDialog(
-        title: const Text('Edit Tax Rate'),
-        content: TaxRateForm(id: id),
+        title: const Text('Edit Warranty'),
+        content: WarrantyForm(id: id),
       );
     });
-    await getAllTaxes();
+    await getAllWarranties();
   }
 
   @override
@@ -143,14 +142,13 @@ class TaxScreenState extends State<TaxScreen> {
                     padding: EdgeInsets.only(top: 32, left: 16),
                     child: Row(
                       children: [
-                        Text('Tax Rates',
+                        Text('Warranties',
                             style: TextStyle(
                                 fontSize: 28, fontWeight: FontWeight.bold)
                         ),
                         Padding(
                             padding: EdgeInsets.only(left: 5, top: 7),
-                            child: Text(
-                                'Manage your tax rates', style: TextStyle(
+                            child: Text('Manage your warranties', style: TextStyle(
                                 fontSize: 18))
                         )
                       ],
@@ -268,7 +266,7 @@ class TaxScreenState extends State<TaxScreen> {
                         const SizedBox(width: 8),
                         OutlinedButton(
                             onPressed: () {
-                              addTaxRate();
+                              addWarranty();
                             },
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.all(0),
@@ -298,13 +296,13 @@ class TaxScreenState extends State<TaxScreen> {
                       ],
                     ),
                   ),
-                  if(showTaxesList)
+                  if(showWarrantiesList)
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: ListView.separated(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          itemCount: taxrates.length,
+                          itemCount: warranties.length,
                           separatorBuilder: (BuildContext context, int index) {
                             return const Divider();
                           },
@@ -317,27 +315,21 @@ class TaxScreenState extends State<TaxScreen> {
                                   foregroundColor: Colors.white,
                                   child: Text((index + 1).toString()),
                                 ),
-                                title: Text('${taxrates[index].name} ${(taxrates[index].forTaxGroup! ? '(For tax group only)':'')} '),
-                                subtitle: Column(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Text('Amount: ',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold)),
-                                          Text('${taxrates[index].amount}%')
-                                        ],
-                                      ),
-                                    ]
+                                title: Text(warranties[index].name),
+                                subtitle: Row(
+                                  children: [
+                                    const Text('Duration:', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    Text(' ${(warranties[index].duration ?? 0)} ${warranties[index].durationType}'),
+                                  ],
                                 ),
                                 trailing: PopupMenuButton<String>(
                                   onSelected: (value) {
                                     switch (value.toLowerCase()) {
                                       case 'edit':
-                                        editTaxRate(taxrates[index].id);
+                                        editWarranty(warranties[index].id);
                                         break;
                                       case 'delete':
-                                        deleteTaxRate(taxrates[index].id);
+                                        deleteWarranty(warranties[index].id);
                                         break;
                                     }
                                   },
@@ -350,6 +342,16 @@ class TaxScreenState extends State<TaxScreen> {
                                     }).toList();
                                   },
                                 ),
+                                children: <Widget>[
+                                  Row(
+                                    children: [
+                                      const Text('Description: ',
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold)),
+                                      Text(warranties[index].description!)
+                                    ],
+                                  ),
+                                ],
                               ),
                             );
                           }
@@ -364,167 +366,205 @@ class TaxScreenState extends State<TaxScreen> {
   }
 }
 
-class TaxRateForm extends StatefulWidget {
+class WarrantyForm extends StatefulWidget {
   final int? id;
-  const TaxRateForm({Key? key, this.id}) : super(key: key);
+  const WarrantyForm({Key? key, this.id}) : super(key: key);
 
   @override
-  TaxRateFormState createState()=> TaxRateFormState();
+  WarrantyFormState createState()=> WarrantyFormState();
 }
 
-class TaxRateFormState extends State<TaxRateForm>{
+class WarrantyFormState extends State<WarrantyForm>{
 
-  late TextStyle buttonTextStyle = const TextStyle(
-      fontSize: 15, fontWeight: FontWeight.bold);
-  final TextEditingController taxNameController = TextEditingController();
-  final TextEditingController taxAmountController = TextEditingController();
+  final TextEditingController warrantyNameController = TextEditingController();
+  final TextEditingController warrantyDescriptionController = TextEditingController();
+  final TextEditingController durationController = TextEditingController();
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   late bool success = false;
   late String successMsg = "";
   late bool error = false;
   late String errorMsg = "";
-  late int taxId = 0;
-  late bool forTaxGroupOnly = false;
+  late int warrantyId = 0;
+  final List<String> durationTypes = ["Days", "Months", "Years"];
+  late String durationType = "Days";
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    taxId = widget.id ?? 0;
-
-    if(taxId > 0) {
-      getTable(taxId);
+    warrantyId = widget.id ?? 0;
+    if(warrantyId > 0){
+      getWarranty(warrantyId);
     }
   }
 
-  getTable(int id) async{
+  getWarranty(int id) async{
+    dynamic response = await RestSerice().getData("/warranty/$id");
+    List<dynamic> warrantyList = (response['data'] as List).cast<dynamic>();
+    dynamic warranty = warrantyList.isNotEmpty ? warrantyList[0] : null;
 
-    dynamic response = await RestSerice().getData("/tax/$id");
-    List<dynamic> taxList = (response['data'] as List).cast<dynamic>();
-    dynamic tax = taxList.isNotEmpty ? taxList[0] : null;
-
-    taxNameController.text = tax['name'];
-    taxAmountController.text = tax['amount'].toString();
+    warrantyNameController.text = warranty['name'];
+    warrantyDescriptionController.text = warranty['description'];
+    durationController.text = warranty['duration'].toString();
 
     setState(() {
-      taxId = tax['id'];
-      forTaxGroupOnly = tax['for_tax_group'] == 1;
+      durationType = warranty['duration_type'];
     });
-
   }
 
   @override
   Widget build(BuildContext context) {
     return Form(
-        key: formKey,
-        child: SingleChildScrollView(
-            child: SizedBox(
-              width: double.maxFinite,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if(error)
-                    Text(errorMsg,
-                        style: const TextStyle(
-                            color: Colors.red, fontSize: 18)),
-                  if(success)
-                    Text(successMsg,
-                        style: const TextStyle(
-                            color: Colors.green, fontSize: 18)),
-                  const SizedBox(height: 16.0),
-                  if(!success)
-                    Column(
-                      children: [
-                        AllComponents().buildTextFormField(
-                          labelText: 'Name',
-                          controller: taxNameController,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please specify tax name.';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16.0),
-                        AllComponents().buildTextFormField(
-                          labelText: 'Tax Rate %',
-                          controller: taxAmountController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: <TextInputFormatter>[
-                            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                          ],
-                        ),
-                        const SizedBox(height: 16.0),
-                        CheckboxListTile(
-                          value: forTaxGroupOnly,
-                          controlAffinity: ListTileControlAffinity
-                              .leading,
-                          tristate: false,
-                          title: const Text('For tax group only'),
-                          onChanged: (value) {
-                            setState(() {
-                              forTaxGroupOnly = value!;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 16.0),
-                      ],
-                    ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if(!success)
-                        ElevatedButton(
-                          onPressed: () async {
-                            if (formKey.currentState!.validate()) {
-                              Map<String, dynamic> payload = {};
-
-                              payload["name"] = taxNameController.text;
-                              payload["amount"] = taxAmountController.text;
-                              payload["for_tax_group"] = forTaxGroupOnly?1:0;
-
-                              dynamic response = taxId > 0
-                                  ? await RestSerice().putData(
-                                  "/tax/$taxId", payload)
-                                  : await RestSerice().postData(
-                                  "/tax", payload);
-
-                              if (response.containsKey('success')) {
-                                if (response['success']) {
-                                  setState(() {
-                                    successMsg = response['msg'];
-                                    success = true;
-                                  });
-                                } else {
-                                  setState(() {
-                                    errorMsg = response['msg'];
-                                    error = true;
-                                  });
-                                }
-                              } else {
-                                setState(() {
-                                  errorMsg =
-                                  "Something went wrong, please try again later";
-                                  error = true;
-                                });
-                              }
-                            }
-                          },
-                          child: const Text('Save'),
-                        ),
-                      const SizedBox(width: 16.0),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context); // Close the popup
+      key: formKey,
+      child: SingleChildScrollView(
+        child: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if(error)
+                Text(errorMsg,
+                    style: const TextStyle(color: Colors.red, fontSize: 18)),
+              if(success)
+                Text(successMsg,
+                    style: const TextStyle(color: Colors.green, fontSize: 18)),
+              const SizedBox(height: 16.0),
+              if(!success)
+                Column(
+                  children: [
+                    AllComponents().buildTextFormField(
+                        labelText: 'Name',
+                        controller: warrantyNameController,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please specify warranty name.';
+                          }
+                          return null;
                         },
-                        child: const Text('Close'),
-                      ),
-                    ],
-                  )
+                        maxLines: 1
+                    ),
+                    const SizedBox(height: 16.0),
+                    AllComponents().buildTextFormField(
+                      labelText: 'Description',
+                      controller: warrantyDescriptionController,
+                      maxLines: 2,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please specify warranty description.';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16.0),
+                    AllComponents().buildTextFormField(
+                      labelText: 'Duration',
+                      controller: durationController,
+                      keyboardType: TextInputType.number,
+                      inputFormatters: <TextInputFormatter>[
+                        FilteringTextInputFormatter.allow(RegExp(r'\d')),
+                      ],
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please specify duration.';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16.0),
+                    DropdownButtonFormField<String>(
+                        value: durationType
+                            .toLowerCase(),
+                        decoration: const InputDecoration(
+                          labelText: 'Duration Type:*',
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.all(
+                                  Radius.circular(4.0)
+                              )
+                          ),
+                        ),
+                        items: durationTypes.map((
+                            taxType) {
+                          return DropdownMenuItem<
+                              String>(
+                            value: taxType.toLowerCase(),
+                            child: Text(taxType),
+                          );
+                        }).toList(),
+                        onChanged: (String? value) {
+                          setState(() {
+                            durationType = value!;
+                          });
+                        }
+                    ),
+                    const SizedBox(height: 16.0),
+                  ],
+                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if(!success)
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (formKey.currentState!.validate()) {
+                          Map<String, dynamic> payload = {};
+
+                          payload["name"] = warrantyNameController.text;
+                          payload["description"] =
+                              warrantyDescriptionController.text;
+                          payload["duration"] =
+                              durationController.text;
+                          payload["duration_type"] =
+                              durationType;
+
+
+                          dynamic response = warrantyId > 0
+                              ? await RestSerice()
+                              .putData(
+                              "/warranty/$warrantyId", payload)
+                              : await RestSerice()
+                              .postData(
+                              "/warranty", payload);
+
+                          print(response);
+
+                          if (response.containsKey('success')) {
+                            if (response['success']) {
+                              // Navigator.pop(context);
+
+                              setState(() {
+                                successMsg = response['msg'];
+                                success = true;
+                              });
+                            } else {
+                              setState(() {
+                                errorMsg = response['msg'];
+                                error = true;
+                              });
+                            }
+                          } else {
+                            setState(() {
+                              errorMsg =
+                              "Something went wrong, please try again later";
+                              error = true;
+                            });
+                          }
+                        }
+                      },
+                      child: const Text('Save'),
+                    ),
+                  const SizedBox(width: 16.0),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context); // Close the popup
+                    },
+                    child: const Text('Close'),
+                  ),
                 ],
-              ),
-            )
-        )
+              )
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

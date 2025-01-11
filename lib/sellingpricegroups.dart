@@ -1,22 +1,17 @@
-import 'dart:convert';
-
-import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:gs_erp/services/http.service.dart';
 
 import 'main.dart';
-import 'models/BusinessLocation.dart';
-import 'models/Tax.dart';
+import 'models/PriceGroup.dart';
 
-class TaxScreen extends StatefulWidget {
-  const TaxScreen({super.key});
+class PriceGroupScreen extends StatefulWidget {
+  const PriceGroupScreen({super.key});
 
   @override
-  TaxScreenState createState() => TaxScreenState();
+  PriceGroupScreenState createState() => PriceGroupScreenState();
 }
 
-class TaxScreenState extends State<TaxScreen> {
+class PriceGroupScreenState extends State<PriceGroupScreen> {
 
   late TextStyle buttonTextStyle = const TextStyle(
       fontSize: 15, fontWeight: FontWeight.bold);
@@ -35,52 +30,50 @@ class TaxScreenState extends State<TaxScreen> {
     ),
   );
 
-  final List<String> items = List<String>.generate(100, (i) => '$i');
+  late List<PriceGroup> pricegroups = [];
 
-  late List<Tax> taxrates = [];
-
-  bool showTaxesList = false;
+  bool showPriceGroupsList = false;
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    getAllTaxes();
+    getAllPriceGroups();
   }
 
-  getAllTaxes() async {
-    taxrates = [];
-    dynamic response = await RestSerice().getData('/tax');
-    List<dynamic> taxList = (response['data'] as List).cast<dynamic>();
+  getAllPriceGroups() async {
+    pricegroups = [];
+    dynamic response = await RestSerice().getData('/selling-price-group');
+    List<dynamic> pgList = (response['data'] as List).cast<dynamic>();
 
-    for(var tax in taxList){
-      taxrates.add(Tax(id: tax['id'], name: tax['name'], amount: double.parse(tax['amount'].toString()), isTaxGroup: tax['is_tax_group'] == 1, forTaxGroup: tax['for_tax_group'] == 1));
+    for(var priceGroup in pgList){
+      pricegroups.add(PriceGroup(id: priceGroup['id'], name: priceGroup['name'], description: priceGroup['description'], isActive: priceGroup['is_active'] == 1));
     }
 
     setState(() {
-      showTaxesList = true;
+      showPriceGroupsList = true;
     });
 
   }
 
-  addTaxRate() async {
+  addPriceGroup() async {
     await showDialog(context: context, barrierDismissible: false, builder: (BuildContext context){
       return const AlertDialog(
-        title: Text('Add New Tax Rate'),
-        content: TaxRateForm(),
+        title: Text('Add New Price Group'),
+        content: PriceGroupForm(),
       );
     });
-    await getAllTaxes();
+    await getAllPriceGroups();
   }
 
-  deleteTaxRate(int id) async {
+  deletePriceGroup(int id) async {
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text("Confirm Tax Rate"),
-          content: const Text("Are you sure you want to delete this Tax Rate?"),
+          title: const Text("Confirm Delete"),
+          content: const Text("Are you sure you want to delete this Record?"),
           actions: [
             TextButton(
               onPressed: () {
@@ -90,8 +83,8 @@ class TaxScreenState extends State<TaxScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                dynamic response = await RestSerice().delData('/tax/$id');
-                await getAllTaxes();
+                dynamic response = await RestSerice().delData('/selling-price-group/$id');
+                await getAllPriceGroups();
                 Navigator.pop(context);
               },
               child: const Text("Delete"),
@@ -102,14 +95,45 @@ class TaxScreenState extends State<TaxScreen> {
     );
   }
 
-  editTaxRate(int id) async {
+  deactivatePriceGroup(int id, bool cond) async {
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        var status = (cond ? "Deactivate" : "Activate");
+        return AlertDialog(
+          title: Text("Confirm $status"),
+          content: Text("Are you sure you want to ${status.toLowerCase()} this Record?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+              },
+              child: const Text("Cancel"),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                dynamic response = await RestSerice().getData('/selling-price-group/activate-deactivate/$id');
+                print(response);
+                await getAllPriceGroups();
+                Navigator.pop(context);
+              },
+              child: Text(status),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  editPriceGroup(int id) async {
     await showDialog(context: context, barrierDismissible: false, builder: (BuildContext context){
       return AlertDialog(
-        title: const Text('Edit Tax Rate'),
-        content: TaxRateForm(id: id),
+        title: const Text('Edit Price Group'),
+        content: PriceGroupForm(id: id),
       );
     });
-    await getAllTaxes();
+    await getAllPriceGroups();
   }
 
   @override
@@ -143,14 +167,13 @@ class TaxScreenState extends State<TaxScreen> {
                     padding: EdgeInsets.only(top: 32, left: 16),
                     child: Row(
                       children: [
-                        Text('Tax Rates',
+                        Text('Selling Price Group',
                             style: TextStyle(
                                 fontSize: 28, fontWeight: FontWeight.bold)
                         ),
                         Padding(
                             padding: EdgeInsets.only(left: 5, top: 7),
-                            child: Text(
-                                'Manage your tax rates', style: TextStyle(
+                            child: Text('Manage your selling price group', style: TextStyle(
                                 fontSize: 18))
                         )
                       ],
@@ -268,7 +291,7 @@ class TaxScreenState extends State<TaxScreen> {
                         const SizedBox(width: 8),
                         OutlinedButton(
                             onPressed: () {
-                              addTaxRate();
+                              addPriceGroup();
                             },
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.all(0),
@@ -298,13 +321,13 @@ class TaxScreenState extends State<TaxScreen> {
                       ],
                     ),
                   ),
-                  if(showTaxesList)
+                  if(showPriceGroupsList)
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: ListView.separated(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          itemCount: taxrates.length,
+                          itemCount: pricegroups.length,
                           separatorBuilder: (BuildContext context, int index) {
                             return const Divider();
                           },
@@ -317,32 +340,33 @@ class TaxScreenState extends State<TaxScreen> {
                                   foregroundColor: Colors.white,
                                   child: Text((index + 1).toString()),
                                 ),
-                                title: Text('${taxrates[index].name} ${(taxrates[index].forTaxGroup! ? '(For tax group only)':'')} '),
-                                subtitle: Column(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          const Text('Amount: ',
-                                              style: TextStyle(
-                                                  fontWeight: FontWeight.bold)),
-                                          Text('${taxrates[index].amount}%')
-                                        ],
-                                      ),
-                                    ]
+                                title: Text('${pricegroups[index].name} ${(pricegroups[index].isActive! ? '(Active)' : '(Inactive)')}'),
+                                subtitle: Row(
+                                  children: [
+                                    Text(pricegroups[index].description ?? ""),
+                                  ],
                                 ),
                                 trailing: PopupMenuButton<String>(
                                   onSelected: (value) {
                                     switch (value.toLowerCase()) {
                                       case 'edit':
-                                        editTaxRate(taxrates[index].id);
+                                        editPriceGroup(pricegroups[index].id);
                                         break;
                                       case 'delete':
-                                        deleteTaxRate(taxrates[index].id);
+                                        deletePriceGroup(pricegroups[index].id);
+                                        break;
+                                      case 'deactivate':
+                                        deactivatePriceGroup(
+                                            pricegroups[index].id, pricegroups[index].isActive!);
+                                        break;
+                                      case 'activate':
+                                        deactivatePriceGroup(
+                                            pricegroups[index].id, pricegroups[index].isActive!);
                                         break;
                                     }
                                   },
                                   itemBuilder: (BuildContext context) {
-                                    return ['Edit', 'Delete'].map((String e) {
+                                    return ['Edit', 'Delete', (pricegroups[index].isActive! ? 'Deactivate' : 'Activate')].map((String e) {
                                       return PopupMenuItem<String>(
                                         value: e,
                                         child: Text(e),
@@ -364,167 +388,149 @@ class TaxScreenState extends State<TaxScreen> {
   }
 }
 
-class TaxRateForm extends StatefulWidget {
+class PriceGroupForm extends StatefulWidget {
   final int? id;
-  const TaxRateForm({Key? key, this.id}) : super(key: key);
+  const PriceGroupForm({Key? key, this.id}) : super(key: key);
 
   @override
-  TaxRateFormState createState()=> TaxRateFormState();
+  PriceGroupFormState createState()=> PriceGroupFormState();
 }
 
-class TaxRateFormState extends State<TaxRateForm>{
+class PriceGroupFormState extends State<PriceGroupForm>{
 
-  late TextStyle buttonTextStyle = const TextStyle(
-      fontSize: 15, fontWeight: FontWeight.bold);
-  final TextEditingController taxNameController = TextEditingController();
-  final TextEditingController taxAmountController = TextEditingController();
+  final TextEditingController pgNameController = TextEditingController();
+  final TextEditingController pgDescriptionController = TextEditingController();
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   late bool success = false;
   late String successMsg = "";
   late bool error = false;
   late String errorMsg = "";
-  late int taxId = 0;
-  late bool forTaxGroupOnly = false;
+  late int pgId = 0;
 
   @override
   void initState() {
     // TODO: implement initState
     super.initState();
-    taxId = widget.id ?? 0;
-
-    if(taxId > 0) {
-      getTable(taxId);
+    pgId = widget.id ?? 0;
+    if(pgId > 0){
+      getPriceGroup(pgId);
     }
   }
 
-  getTable(int id) async{
+  getPriceGroup(int id) async{
+    dynamic response = await RestSerice().getData("/selling-price-group/$id");
+    List<dynamic> pgList = (response['data'] as List).cast<dynamic>();
+    dynamic priceGroup = pgList.isNotEmpty ? pgList[0] : null;
 
-    dynamic response = await RestSerice().getData("/tax/$id");
-    List<dynamic> taxList = (response['data'] as List).cast<dynamic>();
-    dynamic tax = taxList.isNotEmpty ? taxList[0] : null;
-
-    taxNameController.text = tax['name'];
-    taxAmountController.text = tax['amount'].toString();
-
-    setState(() {
-      taxId = tax['id'];
-      forTaxGroupOnly = tax['for_tax_group'] == 1;
-    });
-
+    pgNameController.text = priceGroup['name'];
+    pgDescriptionController.text = priceGroup['description'];
   }
 
   @override
   Widget build(BuildContext context) {
     return Form(
-        key: formKey,
-        child: SingleChildScrollView(
-            child: SizedBox(
-              width: double.maxFinite,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if(error)
-                    Text(errorMsg,
-                        style: const TextStyle(
-                            color: Colors.red, fontSize: 18)),
-                  if(success)
-                    Text(successMsg,
-                        style: const TextStyle(
-                            color: Colors.green, fontSize: 18)),
-                  const SizedBox(height: 16.0),
-                  if(!success)
-                    Column(
-                      children: [
-                        AllComponents().buildTextFormField(
-                          labelText: 'Name',
-                          controller: taxNameController,
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please specify tax name.';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16.0),
-                        AllComponents().buildTextFormField(
-                          labelText: 'Tax Rate %',
-                          controller: taxAmountController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: <TextInputFormatter>[
-                            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                          ],
-                        ),
-                        const SizedBox(height: 16.0),
-                        CheckboxListTile(
-                          value: forTaxGroupOnly,
-                          controlAffinity: ListTileControlAffinity
-                              .leading,
-                          tristate: false,
-                          title: const Text('For tax group only'),
-                          onChanged: (value) {
-                            setState(() {
-                              forTaxGroupOnly = value!;
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 16.0),
-                      ],
-                    ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if(!success)
-                        ElevatedButton(
-                          onPressed: () async {
-                            if (formKey.currentState!.validate()) {
-                              Map<String, dynamic> payload = {};
-
-                              payload["name"] = taxNameController.text;
-                              payload["amount"] = taxAmountController.text;
-                              payload["for_tax_group"] = forTaxGroupOnly?1:0;
-
-                              dynamic response = taxId > 0
-                                  ? await RestSerice().putData(
-                                  "/tax/$taxId", payload)
-                                  : await RestSerice().postData(
-                                  "/tax", payload);
-
-                              if (response.containsKey('success')) {
-                                if (response['success']) {
-                                  setState(() {
-                                    successMsg = response['msg'];
-                                    success = true;
-                                  });
-                                } else {
-                                  setState(() {
-                                    errorMsg = response['msg'];
-                                    error = true;
-                                  });
-                                }
-                              } else {
-                                setState(() {
-                                  errorMsg =
-                                  "Something went wrong, please try again later";
-                                  error = true;
-                                });
-                              }
-                            }
-                          },
-                          child: const Text('Save'),
-                        ),
-                      const SizedBox(width: 16.0),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context); // Close the popup
+      key: formKey,
+      child: SingleChildScrollView(
+        child: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if(error)
+                Text(errorMsg,
+                    style: const TextStyle(color: Colors.red, fontSize: 18)),
+              if(success)
+                Text(successMsg,
+                    style: const TextStyle(color: Colors.green, fontSize: 18)),
+              const SizedBox(height: 16.0),
+              if(!success)
+                Column(
+                  children: [
+                    AllComponents().buildTextFormField(
+                        labelText: 'Name',
+                        controller: pgNameController,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please specify price group name.';
+                          }
+                          return null;
                         },
-                        child: const Text('Close'),
-                      ),
-                    ],
-                  )
+                        maxLines: 1
+                    ),
+                    const SizedBox(height: 16.0),
+                    AllComponents().buildTextFormField(
+                      labelText: 'Description',
+                      controller: pgDescriptionController,
+                      maxLines: 2,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please specify price group description.';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16.0),
+                  ],
+                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if(!success)
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (formKey.currentState!.validate()) {
+                          Map<String, dynamic> payload = {};
+
+                          payload["name"] = pgNameController.text;
+                          payload["description"] =
+                              pgDescriptionController.text;
+
+                          dynamic response = pgId > 0
+                              ? await RestSerice()
+                              .putData(
+                              "/selling-price-group/$pgId", payload)
+                              : await RestSerice()
+                              .postData(
+                              "/selling-price-group", payload);
+
+                          if (response.containsKey('success')) {
+                            if (response['success']) {
+                              // Navigator.pop(context);
+
+                              setState(() {
+                                successMsg = response['msg'];
+                                success = true;
+                              });
+                            } else {
+                              setState(() {
+                                errorMsg = response['msg'];
+                                error = true;
+                              });
+                            }
+                          } else {
+                            setState(() {
+                              errorMsg =
+                              "Something went wrong, please try again later";
+                              error = true;
+                            });
+                          }
+                        }
+                      },
+                      child: const Text('Save'),
+                    ),
+                  const SizedBox(width: 16.0),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context); // Close the popup
+                    },
+                    child: const Text('Close'),
+                  ),
                 ],
-              ),
-            )
-        )
+              )
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
