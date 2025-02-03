@@ -1,6 +1,4 @@
-import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/flutter_quill.dart';
 import 'package:gs_erp/models/Brand.dart';
 import 'package:gs_erp/models/BusinessLocation.dart';
 import 'package:gs_erp/models/Product.dart';
@@ -8,11 +6,11 @@ import 'package:gs_erp/services/http.service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
-import 'common/button_widget.dart';
 import 'main.dart';
 import 'models/Category.dart';
 import 'models/Currency.dart';
 import 'models/Global.dart';
+import 'models/ProductCombo.dart';
 import 'models/Tax.dart';
 import 'models/Unit.dart';
 
@@ -33,15 +31,15 @@ class BarcodeType {
   }
 }
 
-class ProductVar extends StatefulWidget {
-  final Function(Product p) addProd;
-  const ProductVar({super.key, required this.addProd});
+class ProductCmb extends StatefulWidget {
+  final Function(ProductCombo p) addProd;
+  const ProductCmb({super.key, required this.addProd});
 
   @override
-  State<ProductVar> createState() => ProductVarState();
+  State<ProductCmb> createState() => ProductCmbState();
 }
 
-class ProductVarState extends State<ProductVar> {
+class ProductCmbState extends State<ProductCmb> {
 
   bool? checkBox;
   late bool alertQuantity;
@@ -67,7 +65,19 @@ class ProductVarState extends State<ProductVar> {
   late String selectedProductType = "Single";
   late List<Product> searchProducts = [];
 
-  late Product singleProduct = Product(productId: 0, productName: "", productUnit: "", productPurchasePriceExcTax: 0, productPurchasePriceIncTax: 0);
+  late ProductCombo singleProduct;
+
+  late int prodId = 0;
+  late String prodName = "";
+  late double prodQty = 0;
+  late String unitName = "";
+  late int unitId = 0;
+  late double defaultPurchasePriceExcTax = 0;
+  late double totalPurchasePriceExcTax = 0;
+  late double defaultPurchasePriceIncTax = 0;
+  late double defaultSellingPriceExcTax = 0;
+  late double defaultSellingPriceIncTax = 0;
+
 
   @override
   void initState() {
@@ -77,17 +87,7 @@ class ProductVarState extends State<ProductVar> {
     checkBox = true;
     alertQuantity = false;
     selectedMonth = FinancialYearMonth.values[0];
-    getUnits();
   }
-
-  getUnits() async{
-    dynamic response = await RestSerice().getData("/unit");
-    List<dynamic> unitList = (response['data'] as List).cast<dynamic>();
-    for (dynamic unit in unitList) {
-      units.add(Unit(name: unit['actual_name'] + '(' + unit['short_name'] + ')', id: unit['id']));
-    }
-  }
-
 
   getSearchedProducts(String searchTerm) async {
     if(searchTerm.length > 1) {
@@ -107,21 +107,19 @@ class ProductVarState extends State<ProductVar> {
           "/product/$productId");
 
       setState(() {
-        singleProduct = Product(productId: response['data'][0]['id'], productName: '${response['data'][0]['name']} - ${response['data'][0]['sku']}', productUnit: '${response['data'][0]['unit']['actual_name']} (${response['data'][0]['unit']['short_name']})', productPurchasePriceExcTax: double.parse(response['data'][0]['product_variations'][0]['variations'][0]['default_purchase_price']));
+        prodId = response['data'][0]['id'];
+        prodName = '${response['data'][0]['name']} - ${response['data'][0]['sku']}';
         qtyController.text = "1";
+        prodQty = 1;
+        unitName = '${response['data'][0]['unit']['actual_name']}';
+        unitId = response['data'][0]['unit']['id'];
+        defaultPurchasePriceExcTax = double.parse(response['data'][0]['product_variations'][0]['variations'][0]['default_purchase_price']);
+        // totalPurchasePriceExcTax = defaultPurchasePriceExcTax;
+        defaultPurchasePriceIncTax = double.parse(response['data'][0]['product_variations'][0]['variations'][0]['dpp_inc_tax']);
+        defaultSellingPriceExcTax = double.parse(response['data'][0]['product_variations'][0]['variations'][0]['default_sell_price']);
+        defaultSellingPriceIncTax = double.parse(response['data'][0]['product_variations'][0]['variations'][0]['sell_price_inc_tax']);
       });
 
-
-      // Map<String, dynamic> data = resp['data'];
-      // for(var entry in erpGlobals.entries){
-      //   print('${entry.key}: ${entry.value}');
-      // }
-
-      // List<dynamic> productList = (response['data'] as List).cast<dynamic>();
-      // for (dynamic product in productList) {
-      //   searchProducts.add(Product(
-      //       productId: product['product_id'], productName: product['text']));
-      // }
     }
   }
 
@@ -206,35 +204,27 @@ class ProductVarState extends State<ProductVar> {
 
                             const SizedBox(height: 16),
 
-                            allComponents.buildResponsiveWidget(
-                                Column(
-                                    children: [
-                                      DropdownSearch<ProductCategory>(
-                                        popupProps: const PopupProps.menu(
-                                            showSearchBox: true
-                                        ),
-                                        items: categories,
-                                        dropdownDecoratorProps: const DropDownDecoratorProps(
-                                          dropdownSearchDecoration: InputDecoration(
-                                            hintText: 'Please select a category for product',
-                                            labelText: 'Category:',
-                                            border: OutlineInputBorder(
-                                                borderRadius: BorderRadius.all(
-                                                    Radius.circular(
-                                                        4.0))
-                                            ),
-                                          ),
-                                        ),
-                                        onChanged: (e) {
-                                          setState(() {
-                                            // categoryId = e!.id;
-                                            // getSubCategories(e!.id);
-                                          });
-                                        },
-                                      ),
-                                    ]
-                                ),
-                                context
+                            Autocomplete<Product>(
+                                fieldViewBuilder: (BuildContext context,
+                                    TextEditingController controller,
+                                    FocusNode focusNode,
+                                    VoidCallback onFieldSubmitted) {
+                                  return allComponents.buildTextFormField(
+                                      labelText: 'Enter Product name / SKU / Scan bar code to search',
+                                      controller: controller,
+                                      focusNode: focusNode,
+                                      maxLines: 1
+                                  );
+                                },
+                                optionsBuilder: (
+                                    TextEditingValue textEditingValue) async {
+                                  await getSearchedProducts(
+                                      textEditingValue.text);
+                                  return searchProducts;
+                                },
+                                onSelected: (Product selection) async {
+                                  await getSingleProduct(selection.productId);
+                                }
                             ),
 
                             const SizedBox(height: 24),
@@ -242,8 +232,18 @@ class ProductVarState extends State<ProductVar> {
                             allComponents.buildResponsiveWidget(
                                 Column(
                                     children: [
-                                      SelectionContainer.disabled(child: Text(
-                                          'Product Name: ${singleProduct.productName}')),
+                                      SelectionContainer.disabled(
+                                        child: Row(
+                                            children: [
+                                              const Text('Product Name:',
+                                                style: TextStyle(fontSize: 22,
+                                                    fontWeight: FontWeight
+                                                        .bold),),
+                                              Text(' $prodName',
+                                                  style: const TextStyle(
+                                                      fontSize: 22))
+                                            ]),
+                                      ),
                                     ]
                                 ),
                                 context
@@ -255,11 +255,30 @@ class ProductVarState extends State<ProductVar> {
                                 Column(
                                     children: [
                                       allComponents.buildTextFormField(
-                                        controller: qtyController,
-                                        labelText: 'Quantity:*',
+                                          controller: qtyController,
+                                          labelText: 'Quantity:*',
+                                          onChanged: (String value) {
+                                            setState(() {
+                                              prodQty = double.parse(
+                                                  value.isNotEmpty
+                                                      ? value
+                                                      : "0");
+                                              // totalPurchasePriceExcTax = prodQty * defaultPurchasePriceExcTax;
+                                            });
+                                          }
                                       ),
-                                      SelectionContainer.disabled(child: Text(
-                                          'Unit : ${singleProduct.productUnit}')),
+                                      SelectionContainer.disabled(child: Row(
+                                          children: [
+                                            const Text('Unit :',
+                                                style: TextStyle(fontSize: 22,
+                                                    fontWeight: FontWeight
+                                                        .bold)),
+                                            Text(' $unitName',
+                                                style: const TextStyle(
+                                                    fontSize: 22))
+                                          ]
+                                      )
+                                      ),
                                     ]
                                 ),
                                 context
@@ -270,10 +289,33 @@ class ProductVarState extends State<ProductVar> {
                             allComponents.buildResponsiveWidget(
                                 Column(
                                     children: [
-                                      SelectionContainer.disabled(child: Text(
-                                          'Purchase Price (Excluding Tax): ${erpGlobals['currency']['symbol']} ${singleProduct.productPurchasePriceExcTax}')),
-                                      SelectionContainer.disabled(child: Text(
-                                          'Total Amount (Exc. Tax): ${erpGlobals['currency']['symbol']} ${singleProduct.productPurchasePriceExcTax}'))
+                                      SelectionContainer.disabled(child: Row(
+                                          children: [
+                                            const Text(
+                                                'Purchase Price (Excluding Tax):',
+                                                style: TextStyle(fontSize: 22,
+                                                    fontWeight: FontWeight
+                                                        .bold)),
+                                            Text(
+                                                ' ${erpGlobals['currency']['symbol']} $defaultPurchasePriceExcTax',
+                                                style: const TextStyle(
+                                                    fontSize: 22))
+                                          ])
+                                      ),
+                                      SelectionContainer.disabled(child: Row(
+                                          children: [
+                                            const Text(
+                                                'Total Amount (Exc. Tax):',
+                                                style: TextStyle(fontSize: 22,
+                                                    fontWeight: FontWeight
+                                                        .bold)),
+                                            Text(
+                                                ' ${erpGlobals['currency']['symbol']} ${(prodQty *
+                                                    defaultPurchasePriceExcTax)}',
+                                                style: const TextStyle(
+                                                    fontSize: 22))
+                                          ])
+                                      )
                                     ]
                                 ),
                                 context
@@ -281,31 +323,48 @@ class ProductVarState extends State<ProductVar> {
 
                             const SizedBox(height: 24),
 
-                            OutlinedButton(
-                                onPressed: () {
-                                  // _handleLogin(context);
-                                  if(singleProduct.productName.length > 0) {
-                                    this.widget.addProd(singleProduct);
-                                    Navigator.pop(context);
-                                  }
-                                },
-                                style: ElevatedButton.styleFrom(
-                                    padding: const EdgeInsets.all(10),
-                                    fixedSize: const Size(200, 54),
-                                    textStyle: const TextStyle(
-                                        fontSize: 20, fontWeight: FontWeight.bold),
-                                    foregroundColor: Colors.black87,
-                                    shadowColor: Colors.yellow,
-                                    shape: const StadiumBorder()
-                                ),
-                                child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Text(' Add '),
-                                      Icon(Icons.add)
-                                    ]
-                                )
-                            ),
+                            Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  OutlinedButton(
+                                  onPressed: () {
+                                    if (prodId > 0 && prodName.isNotEmpty) {
+                                      singleProduct = ProductCombo(
+                                          prodId,
+                                          prodName,
+                                          prodQty,
+                                          unitName,
+                                          unitId,
+                                          defaultPurchasePriceExcTax,
+                                          totalPurchasePriceExcTax,
+                                          defaultPurchasePriceIncTax,
+                                          defaultSellingPriceExcTax,
+                                          defaultSellingPriceIncTax);
+                                      this.widget.addProd(singleProduct);
+                                      Navigator.pop(context);
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                      padding: const EdgeInsets.all(10),
+                                      fixedSize: const Size(200, 54),
+                                      textStyle: const TextStyle(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold),
+                                      foregroundColor: Colors.black87,
+                                      shadowColor: Colors.yellow,
+                                      shape: const StadiumBorder()
+                                  ),
+                                  child: const Row(
+                                      mainAxisAlignment: MainAxisAlignment
+                                          .center,
+                                      children: [
+                                        Text(' Add '),
+                                        Icon(Icons.add)
+                                      ]
+                                  )
+                              ),
+
+                            ]),
 
                             const SizedBox(height: 16.0),
 

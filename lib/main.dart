@@ -609,6 +609,71 @@ class AllComponents {
     );
   }
 
+  Widget buildCLFormField({
+    TextEditingController? controller,
+    void Function(String)? onTBChanged,
+    void Function(String)? onDPChanged,
+    void Function(String?)? onDDChanged,
+    String? Function(String?)? validator,
+    void Function()? onDPTap,
+    void Function()? onTBTap,
+    dynamic dataObj
+  }) {
+
+    if (dataObj["label_data"]["type"] == "dropdown") {
+
+      String input = dataObj["label_data"]["dropdown_options"];
+
+      List<String> result = input.split("\r\n");
+
+      return DropdownButtonFormField<String>(
+          value: result[0].toLowerCase(),
+          decoration: InputDecoration(
+            labelText: dataObj["label_text"],
+            border: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(
+                    Radius
+                        .circular(4.0)
+                )
+            ),
+          ),
+          items: result.map((rsltVal) {
+            return DropdownMenuItem<String>(
+              value: rsltVal.toLowerCase(),
+              child: Text(rsltVal),
+            );
+          }).toList(),
+          onChanged: onDDChanged
+      );
+
+    }
+
+    if (dataObj["label_data"]["type"] == "date") {
+
+      return AllComponents().buildTextFormField(
+          labelText: 'Start Date',
+          isReadOnly: true,
+          controller: controller,
+          suffixIcon: const Icon(
+              Icons.calendar_month, size: 40),
+          onChanged: onDPChanged,
+          onTap: onDPTap
+      );
+
+    }
+
+    return TextFormField(
+      controller: controller,
+      decoration: const InputDecoration(
+        border: OutlineInputBorder()
+      ),
+      onChanged: onTBChanged,
+      validator: validator,
+      onTap: onTBTap,
+    );
+
+  }
+
   TextFormField buildTextFormFieldForPassword({
     Key? key,
     TextEditingController? controller,

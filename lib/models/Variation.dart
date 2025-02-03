@@ -3,7 +3,8 @@ class Variation{
   final String name;
   final String values;
   final bool isDelete;
-  Variation({required this.id, required this.name, required this.values, required this.isDelete});
+  final List<Variation>? subVars;
+  Variation({required this.id, required this.name, required this.values, required this.isDelete, this.subVars});
 
   @override
   String toString() => name;

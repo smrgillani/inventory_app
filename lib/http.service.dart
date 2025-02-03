@@ -92,9 +92,7 @@ Future<Map<String, dynamic>> sendFormData(Map<String, dynamic> formData, String 
 
   try{
     bodyResponse = json.decode(response.body);
-    print("error in try");
   }catch(e){
-    print("error in catch");
     if(response.statusCode == 419){
       bodyResponse['sucess'] = false;
       Map<String, dynamic> errors = {};
