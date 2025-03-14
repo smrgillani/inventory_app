@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:gs_erp/brands.dart';
 import 'package:gs_erp/categories.dart';
 import 'package:gs_erp/main.dart';
+import 'package:gs_erp/manage_product.dart';
 import 'package:gs_erp/products.dart';
 import 'package:gs_erp/sellingpricegroups.dart';
 import 'package:gs_erp/tables.dart';
@@ -239,13 +240,13 @@ class DashboardState extends State<Dashboard> {
                   ListTile(
                     title: const Text("Products"),
                     onTap: () {
-                      // Handle Sub-Menu Item 1 navigation
+                      Navigator.push(context,MaterialPageRoute(builder: (context) => const ProductsScreen()));
                     },
                   ),
                   ListTile(
                     title: const Text("Add Product"),
                     onTap: () {
-                      Navigator.push(context,MaterialPageRoute(builder: (context) => const AddProduct()));
+                      Navigator.push(context,MaterialPageRoute(builder: (context) => const ManageProduct()));
                     },
                   ),
                   ListTile(

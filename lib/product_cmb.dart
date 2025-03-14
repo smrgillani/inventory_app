@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gs_erp/models/Brand.dart';
 import 'package:gs_erp/models/BusinessLocation.dart';
-import 'package:gs_erp/models/Product.dart';
+import 'package:flutter/services.dart';
 import 'package:gs_erp/services/http.service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -14,16 +14,12 @@ import 'models/ProductCombo.dart';
 import 'models/Tax.dart';
 import 'models/Unit.dart';
 
-class PhotoItem {
-  final String image;
-  final String name;
-  PhotoItem(this.image, this.name);
-}
 
-class BarcodeType {
+class ComboProducts {
+  final int productId;
+  final int variationId;
   final String name;
-  final String value;
-  BarcodeType(this.name, this.value);
+  ComboProducts({required this.productId, required this.variationId, required this.name});
 
   @override
   String toString() {
@@ -52,7 +48,6 @@ class ProductCmbState extends State<ProductCmb> {
   List<XFile> images = <XFile>[];
   late List<Unit> units = [];
   late List<Brand> brands = [];
-  final List<BarcodeType> barcodeTypes = [BarcodeType("name 1", "value 1"),BarcodeType("name 2", "value 2")];
   late List<ProductCategory> categories = [];
   late List<ProductCategory> subCategories = [];
   late List<BusinessLocation> businessLocations = [];
@@ -63,11 +58,12 @@ class ProductCmbState extends State<ProductCmb> {
   final List<String> productType = ["Single", "Variable", "Combo"];
   late String selectedSellingPriceTaxType = "Inclusive";
   late String selectedProductType = "Single";
-  late List<Product> searchProducts = [];
+  late List<ComboProducts> searchProducts = [];
 
   late ProductCombo singleProduct;
 
   late int prodId = 0;
+  late int variId = 0;
   late String prodName = "";
   late double prodQty = 0;
   late String unitName = "";
@@ -95,29 +91,28 @@ class ProductCmbState extends State<ProductCmb> {
           "/get-products?check_enable_stock=false&term=$searchTerm");
       List<dynamic> productList = (response['data'] as List).cast<dynamic>();
       for (dynamic product in productList) {
-        searchProducts.add(Product(
-            productId: product['product_id'], productName: product['text']));
+        searchProducts.add(ComboProducts(productId: product['product_id'], variationId: product['variation_id'], name: product['text']));
       }
     }
   }
 
-  getSingleProduct(int productId) async {
+  getSingleProduct(int productId, int variationId) async {
     if(productId > 0) {
-      dynamic response = await RestSerice().getData(
-          "/product/$productId");
+      dynamic response = await RestSerice().getData("/get-combo-product-entry-row?product_id=$productId&variation_id=$variationId");
 
       setState(() {
-        prodId = response['data'][0]['id'];
-        prodName = '${response['data'][0]['name']} - ${response['data'][0]['sku']}';
+        prodId = response['data']['product']['id'];
+        variId = response['data']['product']['variation']['id'];
+        prodName = '${response['data']['product']['name']} (${response['data']['product']['variation']['name']}) - ${response['data']['product']['variation']['sub_sku']}';
         qtyController.text = "1";
         prodQty = 1;
-        unitName = '${response['data'][0]['unit']['actual_name']}';
-        unitId = response['data'][0]['unit']['id'];
-        defaultPurchasePriceExcTax = double.parse(response['data'][0]['product_variations'][0]['variations'][0]['default_purchase_price']);
+        unitName = '${response['data']['product']['unit']['actual_name']}';
+        unitId = response['data']['product']['unit']['id'];
+        defaultPurchasePriceExcTax = double.parse(response['data']['product']['variation']['default_purchase_price']);
         // totalPurchasePriceExcTax = defaultPurchasePriceExcTax;
-        defaultPurchasePriceIncTax = double.parse(response['data'][0]['product_variations'][0]['variations'][0]['dpp_inc_tax']);
-        defaultSellingPriceExcTax = double.parse(response['data'][0]['product_variations'][0]['variations'][0]['default_sell_price']);
-        defaultSellingPriceIncTax = double.parse(response['data'][0]['product_variations'][0]['variations'][0]['sell_price_inc_tax']);
+        defaultPurchasePriceIncTax = double.parse(response['data']['product']['variation']['dpp_inc_tax']);
+        defaultSellingPriceExcTax = double.parse(response['data']['product']['variation']['default_sell_price']);
+        defaultSellingPriceIncTax = double.parse(response['data']['product']['variation']['sell_price_inc_tax']);
       });
 
     }
@@ -177,16 +172,10 @@ class ProductCmbState extends State<ProductCmb> {
 
   @override
   Widget build(BuildContext context) {
-    final List<PhotoItem> _items = [
-      PhotoItem(
-          "https://images.pexels.com/photos/1772973/pexels-photo-1772973.png?auto=compress&cs=tinysrgb&dpr=2&h=750&w=1260",
-          "Stephan Seeber")
-    ];
 
     return LayoutBuilder(
         builder: (context, constraints) {
           bool isTablet = constraints.maxWidth > 600;
-          double imagePickerSize = isTablet ? 200 : 120;
           double bottom = MediaQuery
               .of(context)
               .viewInsets
@@ -204,7 +193,7 @@ class ProductCmbState extends State<ProductCmb> {
 
                             const SizedBox(height: 16),
 
-                            Autocomplete<Product>(
+                            Autocomplete<ComboProducts>(
                                 fieldViewBuilder: (BuildContext context,
                                     TextEditingController controller,
                                     FocusNode focusNode,
@@ -222,8 +211,8 @@ class ProductCmbState extends State<ProductCmb> {
                                       textEditingValue.text);
                                   return searchProducts;
                                 },
-                                onSelected: (Product selection) async {
-                                  await getSingleProduct(selection.productId);
+                                onSelected: (ComboProducts selection) async {
+                                  await getSingleProduct(selection.productId, selection.variationId);
                                 }
                             ),
 
@@ -257,6 +246,11 @@ class ProductCmbState extends State<ProductCmb> {
                                       allComponents.buildTextFormField(
                                           controller: qtyController,
                                           labelText: 'Quantity:*',
+                                          keyboardType: TextInputType.number,
+                                          inputFormatters: <TextInputFormatter>[
+                                            FilteringTextInputFormatter.allow(
+                                                RegExp(r'^\d*\.?\d*')),
+                                          ],
                                           onChanged: (String value) {
                                             setState(() {
                                               prodQty = double.parse(
@@ -328,19 +322,20 @@ class ProductCmbState extends State<ProductCmb> {
                                 children: [
                                   OutlinedButton(
                                   onPressed: () {
-                                    if (prodId > 0 && prodName.isNotEmpty) {
+                                    if (prodId > 0 && variId > 0 && prodName.isNotEmpty) {
                                       singleProduct = ProductCombo(
-                                          prodId,
-                                          prodName,
-                                          prodQty,
-                                          unitName,
-                                          unitId,
-                                          defaultPurchasePriceExcTax,
-                                          totalPurchasePriceExcTax,
-                                          defaultPurchasePriceIncTax,
-                                          defaultSellingPriceExcTax,
-                                          defaultSellingPriceIncTax);
-                                      this.widget.addProd(singleProduct);
+                                          pId: prodId,
+                                          vId: variId,
+                                          prodName: prodName,
+                                          qty: prodQty,
+                                          unitName: unitName,
+                                          unitId: unitId,
+                                          defaultPurchasePriceExcTax: defaultPurchasePriceExcTax,
+                                          totalPurchasePriceExcTax: totalPurchasePriceExcTax,
+                                          defaultPurchasePriceIncTax: defaultPurchasePriceIncTax,
+                                          defaultSellingPriceExcTax: defaultSellingPriceExcTax,
+                                          defaultSellingPriceIncTax: defaultSellingPriceIncTax);
+                                      widget.addProd(singleProduct);
                                       Navigator.pop(context);
                                     }
                                   },

@@ -16,7 +16,7 @@ class Tax{
 
   @override
   String toString() {
-    return '$name@$amount%';
+    return (id>0) ? '$name@$amount%' : name;
   }
 
   @override

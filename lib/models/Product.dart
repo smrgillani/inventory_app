@@ -7,6 +7,7 @@ class Product {
   final String? productBrand;
   final String? productCategory;
   final String? productSubCategory;
+  final String? productWarranty;
   final String? productBusinessLocation;
   final bool? isProductStockLevelEnabled;
   final int? productAlertQuantity;
@@ -22,8 +23,10 @@ class Product {
   final String? productType;
   final double? productPurchasePriceExcTax;
   final double? productPurchasePriceIncTax;
+  final double? productStock;
   final double? productProfitMargin;
   final double? productSellPriceExcTax;
+  final double? productSellPriceIncTax;
 
   Product({
     required this.productId,
@@ -34,6 +37,7 @@ class Product {
     this.productBrand,
     this.productCategory,
     this.productSubCategory,
+    this.productWarranty,
     this.productBusinessLocation,
     this.isProductStockLevelEnabled,
     this.productAlertQuantity,
@@ -49,8 +53,10 @@ class Product {
     this.productType,
     this.productPurchasePriceExcTax,
     this.productPurchasePriceIncTax,
+    this.productStock,
     this.productProfitMargin,
-    this.productSellPriceExcTax
+    this.productSellPriceExcTax,
+    this.productSellPriceIncTax,
   });
 
   @override

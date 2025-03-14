@@ -1,6 +1,7 @@
 
 class ProductCombo {
-  final int id;
+  final int pId;
+  final int vId;
   final String prodName;
   final double qty;
   final String unitName;
@@ -11,5 +12,5 @@ class ProductCombo {
   final double defaultSellingPriceExcTax;
   final double defaultSellingPriceIncTax;
 
-  ProductCombo(this.id, this.prodName, this.qty, this.unitName, this.unitId, this.defaultPurchasePriceExcTax, this.totalPurchasePriceExcTax, this.defaultPurchasePriceIncTax, this.defaultSellingPriceExcTax, this.defaultSellingPriceIncTax);
+  ProductCombo({required this.pId, required this.vId, required this.prodName, required this.qty, required this.unitName, required this.unitId, required this.defaultPurchasePriceExcTax, required this.totalPurchasePriceExcTax, required this.defaultPurchasePriceIncTax, required this.defaultSellingPriceExcTax, required this.defaultSellingPriceIncTax});
 }

@@ -43,13 +43,13 @@ class VariationUI{
   final TextEditingController mrgnValCntrlr;
   final TextEditingController spExcTaxValCntrlr;
   final TextEditingController spIncTaxValCntrlr;
-  final List<XFile> files;
+  final List<MediaFiles> files;
 
   VariationUI(this.variation, this.skusCntrlr, this.skusValCntrlr, this.ppExcTaxValCntrlr, this.ppIncTaxValCntrlr, this.mrgnValCntrlr, this.spExcTaxValCntrlr, this.spIncTaxValCntrlr, this.files);
 }
 
 class ProductVar extends StatefulWidget {
-  final Function(int mainVarId, String mainVarName, List<ProductVariations> products) addProd;
+  final Function(int id, int mainVarId, String mainVarName, bool isUpdate, List<ProductVariations> products) addProd;
   final double taxVal;
   final String taxType;
   const ProductVar({super.key, required this.addProd, required this.taxVal, required this.taxType});
@@ -221,13 +221,13 @@ class ProductVarState extends State<ProductVar> {
     }
   }
 
-  Future<void> pickImage() async {
+  Future<void> pickImage(int index) async {
     final picker = ImagePicker();
     final List<XFile> medias = await picker.pickMultiImage();
     if (medias != null) {
       setState(() {
         for(XFile image in medias) {
-          images.add(image);
+          selectedSubVars[index].files.add(MediaFiles(imagePath: image.path, isLocal: true));
         }
       });
     }
@@ -245,20 +245,20 @@ class ProductVarState extends State<ProductVar> {
     });
   }
 
-  void removeProductImages(int index) {
+  void removeProductImages(int mainIndex, int index) {
     setState(() {
-      images.removeAt(index);
+      selectedSubVars[mainIndex].files.removeAt(index);
     });
   }
 
-  updateProductImages(int index) async {
+  updateProductImages(int mainIndex, int index) async {
 
     final imagePicker = ImagePicker();
     final pickedFile = await imagePicker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
       setState(() {
-        images[index] = pickedFile;
+        selectedSubVars[mainIndex].files[index] = MediaFiles(id: selectedSubVars[mainIndex].files[index].id, imagePath: pickedFile.path, isLocal: true);
       });
     }
 
@@ -818,9 +818,7 @@ class ProductVarState extends State<ProductVar> {
                                                           },
                                                         ),
 
-                                                        if(widget.taxType
-                                                            .toLowerCase() ==
-                                                            "inclusive")
+                                                        if(widget.taxType.toLowerCase() == "inclusive")
                                                           allComponents
                                                               .buildTextFormField(
                                                               labelText: 'Default Selling Price (Inc. Tax):',
@@ -882,18 +880,12 @@ class ProductVarState extends State<ProductVar> {
                                                                 }
 
                                                                 setState(() {
-                                                                  selectedSubVars[index]
-                                                                      .mrgnValCntrlr
-                                                                      .text =
-                                                                      (profitPercent)
-                                                                          .toString();
+                                                                  selectedSubVars[index].mrgnValCntrlr.text = (profitPercent).toString();
                                                                 });
                                                               }
                                                           ),
 
-                                                        if(widget.taxType
-                                                            .toLowerCase() ==
-                                                            "exclusive")
+                                                        if(widget.taxType.toLowerCase() == "exclusive")
                                                           allComponents
                                                               .buildTextFormField(
                                                               labelText: 'Default Selling Price (Exc. Tax):',
@@ -909,8 +901,7 @@ class ProductVarState extends State<ProductVar> {
                                                                 }
                                                                 return null;
                                                               },
-                                                              onChanged: (
-                                                                  String value) {
+                                                              onChanged: (String value) {
                                                                 double sellingPrice = double
                                                                     .parse(value
                                                                     .isNotEmpty
@@ -981,7 +972,7 @@ class ProductVarState extends State<ProductVar> {
 
                                               const SizedBox(height: 24),
 
-                                              if(images.isNotEmpty)
+                                              if(selectedSubVars[index].files.isNotEmpty)
                                                 SingleChildScrollView(
                                                   padding: const EdgeInsets
                                                       .only(
@@ -996,10 +987,9 @@ class ProductVarState extends State<ProductVar> {
                                                           mainAxisSpacing: 0,
                                                           crossAxisCount: 3,
                                                         ),
-                                                        itemCount: images
-                                                            .length,
+                                                        itemCount: selectedSubVars[index].files.length,
                                                         itemBuilder: (context,
-                                                            index) {
+                                                            imgIndex) {
                                                           return Stack(
                                                               children: [
                                                                 Container(
@@ -1032,8 +1022,7 @@ class ProductVarState extends State<ProductVar> {
                                                                       child: Image
                                                                           .file(
                                                                           File(
-                                                                              images[index]
-                                                                                  .path),
+                                                                              selectedSubVars[index].files[imgIndex].imagePath),
                                                                           fit: BoxFit
                                                                               .cover),
                                                                     )
@@ -1044,7 +1033,7 @@ class ProductVarState extends State<ProductVar> {
                                                                   child: InkWell(
                                                                     onTap: () {
                                                                       removeProductImages(
-                                                                          index);
+                                                                          index, imgIndex);
                                                                     },
                                                                     child: const Column(
                                                                         children: <
@@ -1065,7 +1054,7 @@ class ProductVarState extends State<ProductVar> {
                                                                   child: InkWell(
                                                                     onTap: () async {
                                                                       await updateProductImages(
-                                                                          index);
+                                                                          index, imgIndex);
                                                                     },
                                                                     child: const Column(
                                                                         children: <
@@ -1093,7 +1082,7 @@ class ProductVarState extends State<ProductVar> {
                                                       .all(
                                                       16),
                                                   child: GestureDetector(
-                                                      onTap: pickImage,
+                                                      onTap: ()async { await pickImage(index);},
                                                       child: Container(
                                                           width: 200,
                                                           height: 200,
@@ -1155,40 +1144,44 @@ class ProductVarState extends State<ProductVar> {
                                                 for (var slctSubVar in selectedSubVars) {
                                                   varsProds.add(
                                                       ProductVariations(
-                                                          slctSubVar.variation
-                                                              .id,
-                                                          slctSubVar.skusCntrlr
+                                                        id:0,
+                                                          sku:slctSubVar.skusCntrlr
                                                               .text,
-                                                          slctSubVar
+                                                          value:slctSubVar
                                                               .skusValCntrlr
                                                               .text,
-                                                          double.parse(
+                                                         variationValueId : slctSubVar.variation
+                                                              .id,
+                                                          defaultPurchasePriceExcTax: double.parse(
                                                               slctSubVar
                                                                   .ppExcTaxValCntrlr
                                                                   .text),
-                                                          double.parse(
+                                                          defaultPurchasePriceIncTax: double.parse(
                                                               slctSubVar
                                                                   .ppIncTaxValCntrlr
                                                                   .text),
-                                                          double.parse(
+                                                          xMargin: double.parse(
                                                               slctSubVar
                                                                   .mrgnValCntrlr
                                                                   .text),
-                                                          double.parse(
+                                                          defaultSellingPriceExcTax: double.parse(
                                                               slctSubVar
                                                                   .spExcTaxValCntrlr
                                                                   .text),
-                                                          double.parse(
+                                                          defaultSellingPriceIncTax: double.parse(
                                                               slctSubVar
                                                                   .spIncTaxValCntrlr
                                                                   .text),
-                                                          images
+                                                          isUpdate: false,
+                                                          images:slctSubVar.files
                                                       ));
                                                 }
 
                                                 widget.addProd(
+                                                    0,
                                                     singleVariation?.id ?? 0,
                                                     singleVariation?.name ?? "",
+                                                    false,
                                                     varsProds);
 
                                                 Navigator.pop(context);

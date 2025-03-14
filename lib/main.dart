@@ -425,7 +425,7 @@ class RegistrationScreenState extends State<RegistrationScreen> {
                                           _requestData = await getToken();
 
                                           Map<String, dynamic> jsonData = json.decode(_requestData['body']);
-                                          print(jsonData);
+                                          // print(jsonData);
                                           if (jsonData['success'] == true && jsonData.containsKey('token') && jsonData['token'].toString().isNotEmpty) {
                                             requestData['token'] = jsonData['token'];
                                           }else{
@@ -613,7 +613,7 @@ class AllComponents {
     TextEditingController? controller,
     void Function(String)? onTBChanged,
     void Function(String)? onDPChanged,
-    void Function(String?)? onDDChanged,
+    void Function(int?)? onDDChanged,
     String? Function(String?)? validator,
     void Function()? onDPTap,
     void Function()? onTBTap,
@@ -625,9 +625,13 @@ class AllComponents {
       String input = dataObj["label_data"]["dropdown_options"];
 
       List<String> result = input.split("\r\n");
+      int selectedVal = 0;
+      try {
+        selectedVal = int.parse(dataObj["label_data"]['value'] ?? "0");
+      }catch(e){}
 
-      return DropdownButtonFormField<String>(
-          value: result[0].toLowerCase(),
+      return DropdownButtonFormField<int>(
+          value: selectedVal,
           decoration: InputDecoration(
             labelText: dataObj["label_text"],
             border: const OutlineInputBorder(
@@ -637,10 +641,10 @@ class AllComponents {
                 )
             ),
           ),
-          items: result.map((rsltVal) {
-            return DropdownMenuItem<String>(
-              value: rsltVal.toLowerCase(),
-              child: Text(rsltVal),
+          items: List.generate(result.length, (index) {
+            return DropdownMenuItem<int>(
+              value: index,
+              child: Text(result[index]),
             );
           }).toList(),
           onChanged: onDDChanged
