@@ -3,14 +3,14 @@ import 'package:gs_erp/main.dart';
 import 'package:lottie/lottie.dart';
 
 
-class MyScreen extends StatefulWidget {
-  const MyScreen({super.key});
+class SuccessScreen extends StatefulWidget {
+  const SuccessScreen({super.key});
 
   @override
-  MyScreenState createState() => MyScreenState();
+  SuccessScreenState createState() => SuccessScreenState();
 }
 
-class MyScreenState extends State<MyScreen> {
+class SuccessScreenState extends State<SuccessScreen> {
   late TextStyle buttonTextStyle = const TextStyle(fontSize: 15,fontWeight: FontWeight.bold);
   late Size buttonSize = const Size(150, 40.5);
   late EdgeInsets buttonPadding = const EdgeInsets.all(7);
@@ -29,7 +29,9 @@ class MyScreenState extends State<MyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+        canPop: false,
+        child: Scaffold(
         backgroundColor: const Color(0xFF4ECE72),
         body: LayoutBuilder(
             builder: (context, constraints) {
@@ -103,7 +105,7 @@ class MyScreenState extends State<MyScreen> {
                           'Your business has been registered successfully, \nNow login to perform business related activities.',
                           style: TextStyle(color: Colors.white,
                               fontWeight: FontWeight.bold,
-                              fontSize: 30.0),
+                              fontSize: 24.0),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -128,7 +130,7 @@ class MyScreenState extends State<MyScreen> {
                   )),
               );
             })
-    );
+    ));
   }
 }
 

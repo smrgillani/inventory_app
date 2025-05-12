@@ -347,44 +347,6 @@ class ProductsScreenState extends State<ProductsScreen> {
                           },
                           itemBuilder: (context, index) {
                             return getListItem(products[index]);
-                            // return Container(
-                            //   color: Colors.white,
-                            //   child: ListTile(
-                            //     leading: CircleAvatar(
-                            //       backgroundColor: Colors.black,
-                            //       foregroundColor: Colors.white,
-                            //       child: Text((index + 1).toString()),
-                            //     ),
-                            //     title: Text(products[index].productName),
-                            //     subtitle: Row(
-                            //       children: [
-                            //         const Text('Values : ', style: TextStyle(
-                            //             fontWeight: FontWeight.bold)),
-                            //         Text(products[index].productDescription ?? "")
-                            //       ],
-                            //     ),
-                            //     trailing: PopupMenuButton<String>(
-                            //       onSelected: (value) {
-                            //         switch (value.toLowerCase()) {
-                            //           case 'edit':
-                            //             editProduct(products[index].productId);
-                            //             break;
-                            //           case 'delete':
-                            //             deleteProduct(products[index].productId);
-                            //             break;
-                            //         }
-                            //       },
-                            //       itemBuilder: (BuildContext context) {
-                            //         return ['Edit', 'Delete'].map((String e) {
-                            //           return PopupMenuItem<String>(
-                            //             value: e,
-                            //             child: Text(e),
-                            //           );
-                            //         }).toList();
-                            //       },
-                            //     ),
-                            //   ),
-                            // );
                           }
                       ),
                     ),
@@ -402,34 +364,132 @@ class ProductsScreenState extends State<ProductsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(product.productName,
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.attach_money, color: Colors.blue),
+                Flexible(
+                  flex: 1,
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width,
+                    child: Text(product.productName,
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold))
+                  ),
+                ),
+                const SizedBox(width: 16),
+                OutlinedButton(
+                    onPressed: () {},
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.all(0),
+                      textStyle: buttonTextStyle,
+                      foregroundColor: Colors.black87,
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.yellow,
+                      side: const BorderSide(color: Color(0xffE0E3E7)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Padding(padding: EdgeInsets.all(5),
+                              child: Icon(
+                                Icons.read_more_sharp,
+                                color: Color(0xff57636C),
+                                size: 40)
+                          )
+                        ]
+                    ) // Set a tooltip for long-press
+                ),
                 const SizedBox(width: 8),
-                Text("Purchase: ${product.productPurchasePriceIncTax} - Sell: ${product.productSellPriceIncTax}")
+                OutlinedButton(
+                    onPressed: () async {
+                      await editProduct(product.productId);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.all(0),
+                      textStyle: buttonTextStyle,
+                      foregroundColor: Colors.black87,
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.yellow,
+                      side: const BorderSide(color: Color(0xffE0E3E7)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Padding(padding: EdgeInsets.all(5),
+                              child: Icon(
+                                Icons.edit_note_sharp, color: Color(0xff57636C),
+                                size: 40)
+                          )
+                        ]
+                    ) // Set a tooltip for long-press
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                    onPressed: () async {
+                      await deleteProduct(product.productId);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.all(0),
+                      textStyle: buttonTextStyle,
+                      foregroundColor: Colors.black87,
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.yellow,
+                      side: const BorderSide(color: Color(0xffE0E3E7)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Padding(padding: EdgeInsets.all(5),
+                              child: Icon(
+                                Icons.delete_outline,
+                                color: Color(0xff57636C),
+                                size: 40)
+                          )
+                        ]
+                    ) // Set a tooltip for long-press
+                ),
               ],
             ),
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.inventory, color: Colors.blue),
+                const Icon(Icons.monetization_on, color: Colors.blue, size: 32),
                 const SizedBox(width: 8),
-                Text("Stock: ${product.productStock}")
+                const Text("Purchase: ", style: TextStyle(fontSize: 18)),
+                Text("${product.productPurchasePriceIncTax}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text(" - Sell: ", style: TextStyle(fontSize: 18)),
+                Text("${product.productSellPriceIncTax}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
               ],
             ),
             const SizedBox(height: 8),
             Row(
               children: [
-                const Icon(Icons.info, color: Colors.blue),
+                const Icon(Icons.inventory, color: Colors.blue, size: 32),
                 const SizedBox(width: 8),
-                Text("Product Type: ${product.productType}"),
+                const Text("Stock: ", style: TextStyle(fontSize: 18)),
+                Text("${product.productStock}", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.info, color: Colors.blue, size: 32),
                 const SizedBox(width: 8),
-                const Icon(Icons.business, color: Colors.blue),
+                const Text("Product Type: ", style: TextStyle(fontSize: 18)),
+                Text(product.productType!, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 8),
-                Text("Locations: ${product.productBusinessLocation}")
+                const Icon(Icons.business, color: Colors.blue, size: 32),
+                const SizedBox(width: 8),
+                const Text("Locations: ", style: TextStyle(fontSize: 18)),
+                Text(product.productBusinessLocation!, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))
               ],
             ),
             const SizedBox(height: 8),
@@ -444,15 +504,15 @@ class ProductsScreenState extends State<ProductsScreen> {
               spacing: 8,
               children: [
                 if(product.productUnit!.isNotEmpty)
-                  FilledButton(onPressed: (){}, child: Text("${product.productUnit}")),
+                  FilledButton.tonal(onPressed: (){}, child: Text("${product.productUnit}", style: const TextStyle(fontSize: 18))),
                 if(product.productCategory!.isNotEmpty)
-                  FilledButton(onPressed: (){}, child: Text("${product.productCategory}")),
+                  FilledButton.tonal(onPressed: (){}, child: Text("${product.productCategory}", style: const TextStyle(fontSize: 18))),
                 if(product.productBrand!.isNotEmpty)
-                  FilledButton(onPressed: (){}, child: Text("${product.productBrand}")),
+                  FilledButton.tonal(onPressed: (){}, child: Text("${product.productBrand}", style: const TextStyle(fontSize: 18))),
                 if(product.productWarranty!.isNotEmpty)
-                  FilledButton(onPressed: (){}, child: Text("${product.productWarranty}")),
+                  FilledButton.tonal(onPressed: (){}, child: Text("${product.productWarranty}", style: const TextStyle(fontSize: 18))),
                 if(product.productTax!.isNotEmpty)
-                  FilledButton(onPressed: (){}, child: Text("${product.productTax}")),
+                  FilledButton.tonal(onPressed: (){}, child: Text("${product.productTax}", style: const TextStyle(fontSize: 18))),
               ],
             )
           ],

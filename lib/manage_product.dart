@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'package:gs_erp/models/Brand.dart';
 import 'package:gs_erp/models/BusinessLocation.dart';
 import 'package:gs_erp/models/Product.dart';
@@ -108,7 +108,14 @@ class ManageProductState extends State<ManageProduct> {
   late bool prodNFS;
   late AllComponents allComponents;
   Currency? selectedCurrency;
-  late QuillController _controller = QuillController.basic();
+  // late FocusNode _focusNode;
+  // late ScrollController _scrollController;
+  // late quill.QuillController _controller = quill.QuillController.basic();
+
+  late quill.QuillController _controller;
+  final FocusNode _focusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+
   FinancialYearMonth? selectedMonth;
   File? productImage;
   late int productId = 0;
@@ -210,6 +217,7 @@ class ManageProductState extends State<ManageProduct> {
   void initState() {
     // TODO: implement initState
     super.initState();
+    _controller = quill.QuillController.basic();
     allComponents = AllComponents();
     checkBox = true;
     enableStock = false;
@@ -289,8 +297,8 @@ class ManageProductState extends State<ManageProduct> {
 
             var delta = HtmlToDelta().convert(prodObj['product_description'] ?? "");
 
-            _controller = QuillController(
-                document: Document.fromJson(delta.toJson()),
+            _controller = quill.QuillController(
+                document: quill.Document.fromJson(delta.toJson()),
                 selection: const TextSelection(baseOffset: 0, extentOffset: 0)
             );
 
@@ -1381,20 +1389,26 @@ class ManageProductState extends State<ManageProduct> {
                                     borderRadius: BorderRadius.circular(5),
                                   ),
                                   child: SafeArea(
-                                    child: QuillProvider(
-                                      configurations: QuillConfigurations(
-                                        controller: _controller,
-                                        sharedConfigurations: const QuillSharedConfigurations(
-                                          locale: Locale('de'),
-                                        ),
-                                      ),
+                                    // child: Text(""),
+                                    // child: quill.QuillProvider(
+                                    //   configurations: QuillConfigurations(
+                                    //     controller: _controller,
+                                    //     sharedConfigurations: const QuillSharedConfigurations(
+                                    //       locale: Locale('de'),
+                                    //     ),
+                                    //   ),
                                       child: Column(
                                         children: [
-                                          const QuillToolbar(),
+                                          quill.QuillToolbar.simple(
+                                            controller: _controller,
+                                          ),
                                           Expanded(
-                                            child: QuillEditor.basic(
-                                              configurations: const QuillEditorConfigurations(
-                                                  readOnly: false,
+                                            child: quill.QuillEditor(
+                                              controller: _controller,
+                                              focusNode: _focusNode,
+                                              scrollController: _scrollController,
+                                              configurations: const quill.QuillEditorConfigurations(
+                                                  // readOnly: false,
                                                   placeholder: 'Type product description here ...',
                                                   scrollable: true,
                                                   padding: EdgeInsets.all(16)
@@ -1403,7 +1417,7 @@ class ManageProductState extends State<ManageProduct> {
                                           )
                                         ],
                                       ),
-                                    ),
+                                    // ),
                                   ),
                                 ),
                                 const SizedBox(height: 16.0),

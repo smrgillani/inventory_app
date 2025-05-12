@@ -66,7 +66,7 @@ Future<Map<String, dynamic>> getToken() async {
   return respData;
 }
 
-Future<Map<String, dynamic>> sendFormData(Map<String, dynamic> formData, String cookie) async {
+Future<Map<String, dynamic>> sendFormData(Map<String, dynamic> formData, String cookie, List<http.MultipartFile> files) async {
   final String url = 'http://$publicUrl/connector/api/business-register';
   // final String filePath = '/path/to/your/file.png';
 
@@ -82,7 +82,9 @@ Future<Map<String, dynamic>> sendFormData(Map<String, dynamic> formData, String 
   request.fields['data'] = formData['data'];
 
   // Add a file to be uploaded
-  // request.files.add(await http.MultipartFile.fromPath('file', filePath));
+  if(files.isNotEmpty) {
+    request.files.addAll(files);
+  }
 
   // Send the request
   final streamedResponse = await request.send();

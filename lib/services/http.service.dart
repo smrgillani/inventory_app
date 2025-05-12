@@ -5,7 +5,11 @@ import 'package:flutter/foundation.dart';
 
 class RestSerice {
 
+  //connection string for mobile or tablet
   final String url = "http://192.168.40.12/connector/api";
+
+  //connection string for desktop
+  // final String url = "http://127.0.0.1/connector/api";
 
   Future<Map<String, String>?> getHeaders({bool isMultipart = false}) async{
     SharedPreferences prefs = await SharedPreferences.getInstance();
